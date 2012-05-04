@@ -1,0 +1,144 @@
+#!/bin/sh
+#
+# Copyright (c) 2010 Google Inc johnjbarton@google.com
+
+set -e
+
+OPTIONS_SPEC="\
+git tx-clone [--name <projectName> ] [--branch <branchname>] --destination <local_path> <remote_url> <remote_path> 
+
+Clone a remote repository subdirection into a local directory that does not yet exist.
+--
+n,name=              override default name for transplant branch
+t,branch=            override 'master' default branch of remote
+d,destination=       directory path in local for transplant
+v,verbose            echo information
+x,verbose_only       echo information then exit"
+
+die() {
+	echo >&2 "$@"
+	exit 1
+}
+
+usage() {
+	exec "$0" -h
+}
+
+eval "$(echo "$OPTIONS_SPEC" | git rev-parse --parseopt -- "$@" || echo exit $?)"
+
+get_repo_base() {
+	(
+		cd "`/bin/pwd`" &&
+		cd "$1" || cd "$1.git" &&
+		{
+			cd .git
+			pwd
+		}
+	) 2>/dev/null
+}
+
+
+PROJECT_NAME=
+REMOTE_BRANCH=
+REMOTE_PATH=
+LOCAL_PATH=
+REMOTE_URL=
+
+echo $@
+
+while [ "$#" -ne 0 ]; do
+	case "$1" in 
+	-n|--name)
+	    shift
+		PROJECT_NAME=$1
+		;;
+	-t|--branch)
+		shift
+		REMOTE_BRANCH=$1
+		;;
+ 	-d|--destination)
+ 		shift
+ 		LOCAL_PATH=$1
+ 		;;
+ 	-v|--verbose)
+ 		VERBOSE=yes
+ 		;;
+    -x|--verbose_only)
+        VERBOSE_ONLY=yes
+        VERBOSE=yes
+        ;;
+ 	--)                   # some kind of marker added by rev-parse
+		shift
+ 	    if [ "$#" -ne 2 ]; then
+ 	      die "$# url and path required"
+ 	    fi
+		REMOTE_URL=$1
+		shift
+		REMOTE_PATH=$1
+		break
+		;;
+	*)
+		usage
+		;;
+	esac
+	shift
+done
+
+if [ -z "$REMOTE_URL" ]; then 
+  die "No remote URL"
+fi
+
+# relative to the current working directory...in the *local* tree!
+# so we must be at root of the local tree
+
+if [ -z "$REMOTE_PATH" ]; then
+  die "No remote path"
+fi
+
+case "$LOCAL_PATH" in 
+	*/)
+		;;
+	*?)
+	    LOCAL_PATH="$LOCAL_PATH"/
+	    ;;
+	 *)
+   		die "No local path"
+		;;
+esac
+
+# default to 'master'
+if [ -z "$REMOTE_BRANCH" ]; then
+  REMOTE_BRANCH="master"
+fi
+
+PROJECT_NAME=$( basename "$REMOTE_URL" .git )
+if [ -z "$PROJECT_NAME" ]; then
+  die "No project name"
+fi
+
+TX_REMOTE="tx.""$PROJECT_NAME"
+
+# Strip refs/head/<branch> to give <branch>
+#
+LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
+
+if [ "$VERBOSE" =  yes ]; then
+  echo "git transplant remote named $TX_REMOTE"
+  echo "git transplant from remote repository $REMOTE_URL"
+  echo "git transplant from branch $REMOTE_BRANCH"
+  echo "git transplant from directory $REMOTE_PATH"
+  echo "git transplant to   directory $LOCAL_PATH"
+  echo "git transplant current local branch $LOCAL_BRANCH"
+fi
+
+if [ "$VERBOSE_ONLY" = yes ]; then
+  exit 0
+fi
+
+# Fetch only one branch into our specially named remote
+#
+git remote add -f -t $REMOTE_BRANCH $TX_REMOTE $REMOTE_URL
+
+# move the remote subtree into our local tree
+#
+git archive --format=tar --prefix=$LOCAL_PATH refs/remotes/tx.$PROJECT_NAME/$REMOTE_BRANCH $REMOTE_PATH | tar xf -

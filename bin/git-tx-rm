@@ -1,0 +1,51 @@
+#!/bin/sh
+#
+# Copyright (c) 2010 Google Inc johnjbarton@google.com
+
+set -e
+
+OPTIONS_SPEC="\
+git tx-rm <projectName>
+
+Remove the meta-data for transplant
+--
+n,name=              override default name for transplant branch
+"
+
+die() {
+	echo >&2 "$@"
+	exit 1
+}
+
+usage() {
+	exec "$0" -h
+}
+
+eval "$(echo "$OPTIONS_SPEC" | git rev-parse --parseopt -- "$@" || echo exit $?)"
+
+
+while [ "$#" -ne 0 ]; do
+	case "$1" in 
+	-n|--name)
+	    shift
+		PROJECT_NAME=$1
+		;;
+ 	--)                   # some kind of marker added by rev-parse
+		shift
+ 	    if [ "$#" -ne 1 ]; then
+ 	      die "project name required"
+ 	    fi
+		PROJECT_NAME=$1
+		break
+		;;
+	*)
+		usage
+		;;
+	esac
+	shift
+done
+
+
+TX_REMOTE="tx.""$PROJECT_NAME"
+
+git remote rm $TX_REMOTE
