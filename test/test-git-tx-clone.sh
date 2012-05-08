@@ -2,7 +2,7 @@
 
 # git tx-clone [-name <projectName> ] [-t <branchname>]  -d <local_path> <url> <remote_path> 
 
-export PATH=$PATH:../bin
+export PATH=$PATH:`pwd`/bin
 
 mustFail() {
   if [ $? -eq 1 ]; then
@@ -21,12 +21,37 @@ mustPass() {
   fi
 }
 
+FROM_D=`pwd`
+cd /tmp
+echo "$PATH"
+
+rm -r -f /tmp/git-tx
+
+git clone git@github.com:johnjbarton/git-tx.git
+cd git-tx
+
+
 git tx-clone 
 mustFail
-git tx-clone git@github.com:johnjbarton/front-end.git
+git tx-clone git@github.com:johnjbarton/git-tx.git
 mustFail
-git tx-clone -x --destination front-end/Images git@github.com:johnjbarton/front-end.git Images
+git tx-clone -x --prefix testTransplant git@github.com:johnjbarton/git-tx.git test
 mustPass
-git tx-clone --destination front-end/Images git@github.com:johnjbarton/front-end.git Images
-mustFail
+git tx-clone --prefix testTransplant git@github.com:johnjbarton/git-tx.git test
+mustPass
+
+DELTA=`diff test testTransplant/test`
+if  [ -z "$DELTA" ]; then
+  echo "PASS"
+else
+  echo ">> FAIL <<"
+  exit 11
+fi
+
+git tx-rm git-tx
+
+cd ..
+rm -r -f git-tx
+
+cd "$FROM_D"
 

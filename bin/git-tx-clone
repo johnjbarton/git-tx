@@ -2,19 +2,21 @@
 #
 # Copyright (c) 2010 Google Inc johnjbarton@google.com
 
-set -e
+set -e 
 
 SUBDIRECTORY_OK=yes
-. ../bin/git-sh-setup.sh
+. $(dirname $0)/git-sh-setup.sh
+
+require_clean_work_tree "tx-clone"
 
 OPTIONS_SPEC="\
-git tx-clone [--name <projectName> ] [--branch <branchname>] [--destination <local_path>] <remote_url> <remote_path> 
+git tx-clone [--name <projectName> ] [--branch <branchname>] [--prefix <LOCAL_PATH_PREFIX>] <remote_url> <remote_path> 
 
 Clone a remote repository subdirection into a local directory that does not yet exist.
 --
 n,name=              override default name for transplant branch
 t,branch=            override 'master' default branch of remote
-d,destination=       override ./projectName/remote_path as directory path in local for transplant
+d,prefix=            override ./projectName/remote_path as directory path in local for transplant
 v,verbose            echo information
 x,verbose_only       echo information then exit"
 
@@ -44,7 +46,7 @@ get_repo_base() {
 PROJECT_NAME=
 REMOTE_BRANCH=
 REMOTE_PATH=
-LOCAL_PATH=
+LOCAL_PATH_PREFIX=
 REMOTE_URL=
 
 echo $@
@@ -59,9 +61,9 @@ while [ "$#" -ne 0 ]; do
 		shift
 		REMOTE_BRANCH=$1
 		;;
- 	-d|--destination)
+ 	-d|--prefix)
  		shift
- 		LOCAL_PATH=$1
+ 		LOCAL_PATH_PREFIX=$1
  		;;
  	-v|--verbose)
  		VERBOSE=yes
@@ -117,14 +119,14 @@ fi
 
 TX_REMOTE="tx.""$PROJECT_NAME"
 
-case "$LOCAL_PATH" in 
+case "$LOCAL_PATH_PREFIX" in 
 	*/)
 		;;
 	*?)
-	    LOCAL_PATH="$LOCAL_PATH"/
+	    LOCAL_PATH_PREFIX="$LOCAL_PATH_PREFIX"/
 	    ;;
 	 *)
-   		LOCAL_PATH=$( pwd )/"$PROJECT_NAME"/"$REMOTE_PATH"
+   		LOCAL_PATH_PREFIX="$PROJECT_NAME"/
 		;;
 esac
 
@@ -138,18 +140,31 @@ if [ "$VERBOSE" =  yes ]; then
   echo "git transplant from remote repository $REMOTE_URL"
   echo "git transplant from branch $REMOTE_BRANCH"
   echo "git transplant from directory $REMOTE_PATH"
-  echo "git transplant to   directory $LOCAL_PATH"
+  echo "git transplant to   directory $LOCAL_PATH_PREFIX"/"$REMOTE_PATH"
   echo "git transplant current local branch $LOCAL_BRANCH"
 fi
 
 if [ "$VERBOSE_ONLY" = yes ]; then
   exit 0
 fi
+
 set -v -x
 # Fetch only one branch into our specially named remote
 #
 git remote add -f -t $REMOTE_BRANCH $TX_REMOTE $REMOTE_URL
 
+# mark the local commit before our edits
+#
+git update-ref refs/tx/$TX_REMOTE `git rev-parse HEAD`
+
 # move the remote subtree into our local tree
 #
-git archive --format=tar --prefix=$LOCAL_PATH refs/remotes/tx.$PROJECT_NAME/$REMOTE_BRANCH $REMOTE_PATH | tar xf -
+git archive --format=tar --prefix=$LOCAL_PATH_PREFIX refs/remotes/$TX_REMOTE/$REMOTE_BRANCH $REMOTE_PATH | tar xf -
+
+# commit our edits
+#
+git add "$LOCAL_PATH_PREFIX""$REMOTE_PATH"
+git commit -a -m "git tx-clone --name $PROJECT_NAME --branch $REMOTE_BRANCH --prefix $LOCAL_PATH_PREFIX $REMOTE_URL $REMOTE_PATH"
+ 
+git --no-pager log `git rev-parse refs/tx/$TX_REMOTE`..HEAD
+ 
