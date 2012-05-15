@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# git tx-clone [-name <projectName> ] [-t <branchname>]  -d <local_path> <url> <remote_path> 
+# git tx-clone [-x] [-name <projectName> ] [-t <branchname>] <other_path> 
 
 export PATH=$PATH:`pwd`/bin
 
@@ -11,6 +11,7 @@ mustFail() {
     echo ">> FAIL <<"
     exit 10
   fi
+  beClean
 }
 mustPass() {
   if [ $? -eq 0 ]; then
@@ -19,39 +20,81 @@ mustPass() {
     echo ">> FAIL <<"
     exit 10
   fi
+  beClean
 }
+beClean() {
+  if [ `pwd` != "/tmp/git-tx-left" ]; then
+    echo ">> FAIL << Did not return to /tmp/git-tx-left, still in `pwd` "
+    exit 13
+  fi
+}
+
+# set up for testing
 
 FROM_D=`pwd`
 cd /tmp
-echo "$PATH"
+rm -r -f /tmp/git-tx-left
+rm -r -f /tmp/git-tx-right
+mkdir /tmp/notAGitDir
+git clone git@github.com:johnjbarton/git-tx.git git-tx-left
+git clone git@github.com:johnjbarton/git-tx.git git-tx-right
+cd git-tx-left
 
-rm -r -f /tmp/git-tx
+echo "begin test"
 
-git clone git@github.com:johnjbarton/git-tx.git
-cd git-tx
-
-
+echo "test -------------------------------------------------->  no path given"
 git tx-clone 
 mustFail
-git tx-clone git@github.com:johnjbarton/git-tx.git
+
+echo "test -------------------------------------------------->  self clone" 
+git tx-clone /tmp/git-tx-left
 mustFail
-git tx-clone -x --prefix testTransplant git@github.com:johnjbarton/git-tx.git test
-mustPass
-git tx-clone --prefix testTransplant git@github.com:johnjbarton/git-tx.git test
+
+echo "test -------------------------------------------------->  not a git directory "
+git tx-clone /tmp/notAGitDir
+mustFail
+
+echo "test -------------------------------------------------->  -x explain `pwd`"
+git tx-clone -x /tmp/git-tx-right/test
 mustPass
 
-DELTA=`diff test testTransplant/test`
+echo "test -------------------------------------------------->  normal usage"
+git tx-clone /tmp/git-tx-right/test
+mustPass
+
+echo "test -------------------------------------------------->  correct copy"
+DELTA=`diff /tmp/git-tx-left/git-tx/test /tmp/git-tx-right/test`
 if  [ -z "$DELTA" ]; then
   echo "PASS"
 else
-  echo ">> FAIL <<"
+  echo ">> FAIL << $DELTA"
   exit 11
 fi
 
-git tx-rm git-tx
+echo "test -------------------------------------------------->  directory exists"
+git tx-clone /tmp/git-tx-right
+mustFail
 
-cd ..
-rm -r -f git-tx
+
+echo "test -------------------------------------------------->  tx-rm"
+
+if [ ! "$( git tx-rm git-tx )" ]; then 
+  echo ">> FAIL <<"
+else
+  echo "PASS"
+fi
+
+echo "test -------------------------------------------------->  directory clean up"
+LEFT_OVER_REFS=$(find /tmp/git-tx-left/.git | grep refs/tx/git-tx )
+if [ -z "$LEFT_OVER_REFS" ]; then
+  echo "PASS"
+else
+  echo ">> FAIL << LEFT_OVER_REFS=\"$LEFT_OVER_REFS\""
+  exit 12
+fi
+
+echo "TODO test override default project name"
+echo "TODO test override default other-path branch"
 
 cd "$FROM_D"
 

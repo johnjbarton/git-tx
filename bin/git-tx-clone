@@ -4,21 +4,18 @@
 
 set -e 
 
-SUBDIRECTORY_OK=yes
+SUBDIRECTORY_OK='yes'
 . $(dirname $0)/git-sh-setup.sh
-
 require_clean_work_tree "tx-clone"
 
 OPTIONS_SPEC="\
-git tx-clone [--name <projectName> ] [--branch <branchname>] [--prefix <LOCAL_PATH_PREFIX>] <remote_url> <remote_path> 
+git tx-clone [-x] [-name <projectName> ] [-t <branchname>] <other_path> 
 
-Clone a remote repository subdirection into a local directory that does not yet exist.
+Copy and track another local repository subdirectory into this directory in this repository.
 --
 n,name=              override default name for transplant branch
-t,branch=            override 'master' default branch of remote
-d,prefix=            override ./projectName/remote_path as directory path in local for transplant
-v,verbose            echo information
-x,verbose_only       echo information then exit"
+t,branch=            override 'master' default branch of other
+x,explain            echo information then exit"
 
 die() {
 	echo >&2 "$@"
@@ -44,12 +41,8 @@ get_repo_base() {
 
 
 PROJECT_NAME=
-REMOTE_BRANCH=
-REMOTE_PATH=
-LOCAL_PATH_PREFIX=
-REMOTE_URL=
-
-echo $@
+OTHER_BRANCH=
+OTHER_PATH=
 
 while [ "$#" -ne 0 ]; do
 	case "$1" in 
@@ -59,27 +52,17 @@ while [ "$#" -ne 0 ]; do
 		;;
 	-t|--branch)
 		shift
-		REMOTE_BRANCH=$1
+		OTHER_BRANCH=$1
 		;;
- 	-d|--prefix)
- 		shift
- 		LOCAL_PATH_PREFIX=$1
- 		;;
- 	-v|--verbose)
- 		VERBOSE=yes
- 		;;
-    -x|--verbose_only)
-        VERBOSE_ONLY=yes
-        VERBOSE=yes
+    -x|--explain)
+        EXPLAIN=yes
         ;;
  	--)                   # some kind of marker added by rev-parse
 		shift
- 	    if [ "$#" -ne 2 ]; then
- 	      die "$# url and path required"
+ 	    if [ "$#" -ne 1 ]; then
+ 	      die "other_path required"
  	    fi
-		REMOTE_URL=$1
-		shift
-		REMOTE_PATH=$1
+		OTHER_PATH=$1
 		break
 		;;
 	*)
@@ -89,82 +72,120 @@ while [ "$#" -ne 0 ]; do
 	shift
 done
 
-if [ -z "$REMOTE_URL" ]; then 
-  die "No remote URL"
-fi
-
-# relative to the current working directory...in the *local* tree!
-# so we must be at root of the local tree
-
-case "$REMOTE_PATH" in 
+case "$OTHER_PATH" in 
 	*/)
 		;;
 	*?)
-	    REMOTE_PATH="$REMOTE_PATH"/
+	    OTHER_PATH="$OTHER_PATH"/
 	    ;;
 	 *)
-   		die "No remote path"
+   		die "Path to other git repository required"
 		;;
 esac
-
-# default to 'master'
-if [ -z "$REMOTE_BRANCH" ]; then
-  REMOTE_BRANCH="master"
-fi
-
-PROJECT_NAME=$( basename "$REMOTE_URL" .git )
-if [ -z "$PROJECT_NAME" ]; then
-  die "No project name"
-fi
-
-TX_REMOTE="tx.""$PROJECT_NAME"
-
-case "$LOCAL_PATH_PREFIX" in 
-	*/)
-		;;
-	*?)
-	    LOCAL_PATH_PREFIX="$LOCAL_PATH_PREFIX"/
-	    ;;
-	 *)
-   		LOCAL_PATH_PREFIX="$PROJECT_NAME"/
-		;;
-esac
-
 
 # Strip refs/head/<branch> to give <branch>
 #
 LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 
-if [ "$VERBOSE" =  yes ]; then
-  echo "git transplant remote named $TX_REMOTE"
-  echo "git transplant from remote repository $REMOTE_URL"
-  echo "git transplant from branch $REMOTE_BRANCH"
-  echo "git transplant from directory $REMOTE_PATH"
-  echo "git transplant to   directory $LOCAL_PATH_PREFIX"/"$REMOTE_PATH"
-  echo "git transplant current local branch $LOCAL_BRANCH"
+LOCAL_PATH=`pwd`
+LOCAL_PREFIX=$( git rev-parse --show-prefix )
+
+# default to 'master'
+if [ -z "$OTHER_BRANCH" ]; then
+  OTHER_BRANCH="master"
 fi
 
-if [ "$VERBOSE_ONLY" = yes ]; then
+LOCAL_GIT_DIR=$(git rev-parse --show-toplevel)
+
+# go into the other tree and find its .git
+cd $OTHER_PATH
+
+if [ "z$(git rev-parse --is-inside-work-tree)" != "ztrue" ]; then
+ cd "$LOCAL_PATH"
+ die "Other path not a git repo" 
+fi
+
+if [ $(git rev-parse --show-toplevel) = "$LOCAL_GIT_DIR" ]; then
+ cd "$LOCAL_PATH"
+ die "Do not try to transplant from within one repo"
+fi
+
+OTHER_PREFIX=$( git rev-parse --show-prefix )
+OTHER_CDUP=$( git rev-parse --show-cdup )
+OTHER_GIT_URL=$( git config --get remote.origin.url ) || ( cd "$LOCAL_PATH"; die "Other git repo at $OTHER_PATH has no origin" )
+
+# The git archive is relative to current directory, cd up so our relative path is appended to project name
+cd "$OTHER_CDUP"
+
+PROJECT_NAME=$( basename "$OTHER_GIT_URL" .git )
+if [ -z "$PROJECT_NAME" ]; then
+  die "No project name"
+fi
+
+TX_BRANCH="tx.""$PROJECT_NAME"
+DESTINATION="$LOCAL_PATH"/"$PROJECT_NAME"/"$OTHER_PREFIX"
+
+if [ -e "$DESTINATION" ]; then
+  die "Destination \"$DESTINATION\" already exists"
+fi
+
+if [ "$EXPLAIN" =  yes ]; then
+  echo "git transplant branch named $TX_BRANCH"
+  echo "git transplant from branch $OTHER_BRANCH"
+  echo "git transplant from directory $OTHER_PATH"
+  echo "git transplant to   directory $DESTINATION"
+  echo "git transplant current local branch $LOCAL_BRANCH"
   exit 0
 fi
 
-set -v -x
-# Fetch only one branch into our specially named remote
-#
-git remote add -f -t $REMOTE_BRANCH $TX_REMOTE $REMOTE_URL
+OTHER_COMMIT="$( git rev-parse $OTHER_BRANCH )"
 
-# mark the local commit before our edits
+# copy the other subtree into our local tree
 #
-git update-ref refs/tx/$TX_REMOTE `git rev-parse HEAD`
+git archive --format=tar --prefix="$PROJECT_NAME"/ "$OTHER_BRANCH" "$OTHER_PREFIX" | ( cd "$LOCAL_PATH" && tar xfp -)
 
-# move the remote subtree into our local tree
+cd "$LOCAL_PATH"
+
+REFS_TX=refs/tx/"$PROJECT_NAME"
+REFS_TX_DIR="$LOCAL_GIT_DIR"/.git/"$REFS_TX"
+
+# record the local commit before our edits
 #
-git archive --format=tar --prefix=$LOCAL_PATH_PREFIX refs/remotes/$TX_REMOTE/$REMOTE_BRANCH $REMOTE_PATH | tar xf -
+git update-ref "$REFS_TX"/local_commit `git rev-parse HEAD`
+
+# record the local relative path
+#
+echo "$LOCAL_PREFIX" > "$REFS_TX_DIR"/local_prefix 
+
+# record the other commit we copied
+#
+git update-ref "$REFS_TX"/other_commit "$OTHER_COMMIT"
+
+# record the other relative path
+#
+echo "$OTHER_PREFIX" > "$REFS_TX_DIR"/other_prefix 
+
+# record the other repo
+# 
+echo "$OTHER_GIT_URL" > "$REFS_TX_DIR"/other_repo 
+
+# record the other local path
+#
+echo "$OTHER_PATH" > "$REFS_TX_DIR"/other_path 
+
+#store these records in the transplant
+#
+set -v -e
+cd "$REFS_TX_DIR"
+find . | xargs tar cf - | ( mkdir -p "$LOCAL_PATH"/.git-tx && cd "$LOCAL_PATH"/.git-tx && tar xf -)
+cd "$LOCAL_PATH"
 
 # commit our edits
 #
-git add "$LOCAL_PATH_PREFIX""$REMOTE_PATH"
-git commit -a -m "git tx-clone --name $PROJECT_NAME --branch $REMOTE_BRANCH --prefix $LOCAL_PATH_PREFIX $REMOTE_URL $REMOTE_PATH"
+git add -A
+
+git commit -a -m "Transplant $OTHER_PATH from $OTHER_GIT_URL @ $OTHER_BRANCH to $PROJECT_NAME/$OTHER_PREFIX \n (git tx-clone --name $PROJECT_NAME --branch $OTHER_BRANCH $OTHER_PATH)"
  
-git --no-pager log `git rev-parse refs/tx/$TX_REMOTE`..HEAD
+git --no-pager log `git rev-parse $REFS_TX/local_commit`..HEAD
  
+exit 0

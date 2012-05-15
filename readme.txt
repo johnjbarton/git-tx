@@ -6,15 +6,23 @@ git-tx synchronizes a directory in your local repository to a corresponding dire
 Subcommands
 
 
-git tx clone [--name <projectName> ] <url> <branchname>  <remote_path> <local_path>
+usage: git tx-clone [--name <projectName> ] [--branch <branchname>] [--prefix <LOCAL_PATH_PREFIX>] <remote_url> <remote_path> 
 
+    Clone a remote repository subdirection into a local directory that does not yet exist.
+
+    -n, --name ...        override default name for transplant branch
+    -t, --branch ...      override 'master' default branch of remote
+    -d, --prefix ...      override ./projectName/remote_path as directory path in local for transplant
+    -v, --verbose         echo information
+    -x, --verbose_only    echo information then exit
+    
 Clones the <url>, checks out the <branchname>,  and copies the directory <remote_path> into the <local_path> and commits the change. 
 
 <projectName> defaults to the characters in the last segment of the URL, dropping the file extension. For example,  https://johnjbarton@github.com/johnjbarton/front-end.git results in 'front-end'. To transplant multiple directories from the same remote repo, use eg projectName/remotePath.
 
-The cloned remote repo is placed on an empty orphaned branch name <projectName>.  Creates a commit as if you issued  git add <local_path> then git commit -m 'git tx clone <url> <branchname>  <remote_path> <local_path>' . Also adds a new remote reference named by the project and pointing to <url> and tags HEAD with the name 'tx.<projectName>'.
+Creates a new git remote is defined at TX.<projectName> and a new ref refs/tx/TX.<projectName> pointing to HEAD before the transplant.
 
-If the <local_path> exists, the command fails.
+If the working tree is dirty or the <local_path> exists, the command fails.
 
 
 git tx pull <projectName>

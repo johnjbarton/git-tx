@@ -9,7 +9,7 @@ git tx-rm <projectName>
 
 Remove the meta-data for transplant
 --
-n,name=              override default name for transplant branch
+n,name=              override default name for transplant project
 "
 
 die() {
@@ -45,7 +45,9 @@ while [ "$#" -ne 0 ]; do
 	shift
 done
 
+LOCAL_GIT_DIR=$(git rev-parse --show-toplevel)
+rm -r "$LOCAL_GIT_DIR"/.git/refs/tx/"$PROJECT_NAME"
 
-TX_REMOTE="tx.""$PROJECT_NAME"
+echo "Removed " "$LOCAL_GIT_DIR"/.git/refs/tx/"$PROJECT_NAME"
 
-git remote rm $TX_REMOTE
+exit 0
