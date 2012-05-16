@@ -1,0 +1,138 @@
+#!/bin/sh
+#
+# Copyright (c) 2010 Google Inc johnjbarton@google.com
+
+set -e 
+
+. $(dirname $0)/git-sh-setup.sh
+
+require_clean_work_tree "tx-push"
+
+OPTIONS_SPEC="\
+git tx-push  <projectName>
+
+Squashes all changes on the local transplant subdirectory into a commit on the remote repo
+--
+v,verbose            echo information
+x,verbose_only       echo information then exit"
+
+die() {
+	echo >&2 "$@"
+	exit 1
+}
+
+usage() {
+	exec "$0" -h
+}
+
+eval "$(echo "$OPTIONS_SPEC" | git rev-parse --parseopt -- "$@" || echo exit $?)"
+
+get_repo_base() {
+	(
+		cd "`/bin/pwd`" &&
+		cd "$1" || cd "$1.git" &&
+		{
+			cd .git
+			pwd
+		}
+	) 2>/dev/null
+}
+
+
+PROJECT_NAME=
+
+while [ "$#" -ne 0 ]; do
+	case "$1" in 
+ 	-v|--verbose)
+ 		VERBOSE=yes
+ 		;;
+    -x|--verbose_only)
+        VERBOSE_ONLY=yes
+        VERBOSE=yes
+        ;;
+ 	--)                   # some kind of marker added by rev-parse
+		shift
+ 	    if [ "$#" -ne 1 ]; then
+ 	      die "$# project required"
+ 	    fi
+		PROJECT_NAME=$1
+		break
+		;;
+	*)
+		usage
+		;;
+	esac
+	shift
+done
+
+if [ -z "$PROJECT_NAME" ]; then
+  die "No project name"
+fi
+
+LOCAL_GIT_DIR=$(git rev-parse --show-toplevel)
+META_TX_DIR="$LOCAL_GIT_DIR"/.git-tx/"$PROJECT_NAME"
+
+LOCAL_COMMIT=$( cat "$META_TX_DIR"/local_commit )
+LOCAL_PREFIX=$( cat "$META_TX_DIR"/local_prefix )
+OTHER_COMMIT=$( cat "$META_TX_DIR"/other_commit )
+OTHER_PREFIX=$( cat "$META_TX_DIR"/other_prefix )
+OTHER_PATH=$( cat "$META_TX_DIR"/other_path )
+OTHER_GIT_URL=$( cat "$META_TX_DIR"/other_git_url )
+
+if [ "$VERBOSE" =  yes ]; then
+  echo "git tx push from local directory $LOCAL_PREFIX"
+  echo "git tx push to directory $OTHER_PATH"
+  echo "git tx push to repo $OTHER_GIT_URL"
+  echo "git tx push to directory of other git repo $OTHER_PREFIX" 
+  echo "git tx push diff from commit $LOCAL_COMMIT"
+  echo "git tx push diff to commit $OTHER_COMMIT"
+fi
+
+if [ "$VERBOSE_ONLY" = yes ]; then
+  exit 0
+fi
+
+# verify that the other tree is clean and we are up to date
+#
+CWD=$( pwd )
+cd $OTHER_PATH
+require_clean_work_tree "tx-push"
+
+OTHER_DIFF=$( git diff "$OTHER_COMMIT"..HEAD )
+if [ "$OTHER_DIFF" ]; then
+  echo "Repo at $OTHER_PATH has commits ahead of this transplant, git tx pull first"
+  echo "$OTHER_DIFF"
+  exit 14
+fi
+
+OTHER_GIT_DIR=$(git rev-parse --show-toplevel)
+set -v -x
+cd "$LOCAL_GIT_DIR"
+
+# patch the other tree with changes from this one
+#
+TMP_GIT_TX_PATCH=/tmp/git-tx-$$.patch
+git diff "$LOCAL_COMMIT"..HEAD "--" "$LOCAL_PREFIX" > "$TMP_GIT_TX_PATCH"
+cd "$OTHER_GIT_DIR" 
+patch -p1 < "$TMP_GIT_TX_PATCH"
+
+# now move over to the other tree
+
+LOCAL_URL=$(git config --get remote.origin.url)
+LOCAL_COMMIT=$(git rev-parse HEAD)
+cd "$OTHER_PATH"
+
+echo "ddd debug ddd"
+git status 
+pwd
+ls -a
+echo "-------------"
+
+
+# commit the changes
+git add -A
+git commit -m "Patch from $LOCAL_URL $LOCAL_PREFIX at $LOCAL_COMMIT"
+
+echo "patch committed, test then \'git push\' or \'git reset HEAD\'"
+echo "current directory is $( pwd )"
+exit 0

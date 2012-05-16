@@ -40,7 +40,7 @@ git clone git@github.com:johnjbarton/git-tx.git git-tx-left
 git clone git@github.com:johnjbarton/git-tx.git git-tx-right
 cd git-tx-left
 
-echo "begin test"
+echo ---------------- test git-tx-clone -----------------------
 
 echo "test -------------------------------------------------->  no path given"
 git tx-clone 
@@ -75,6 +75,22 @@ echo "test -------------------------------------------------->  directory exists
 git tx-clone /tmp/git-tx-right
 mustFail
 
+
+echo "this is a test on $( date )" >> test/pushme.txt
+git add test/pushme.txt
+git commit -m "test git-tx-push"
+
+set -x -v
+
+echo ---------------- test git-tx-push -x -----------------------
+git tx-push -x git-tx
+mustPass
+
+echo ---------------- test git-tx-push -----------------------
+git tx-push git-tx
+mustPass
+
+echo ---------------- test git-tx-rm -----------------------
 
 echo "test -------------------------------------------------->  tx-rm"
 

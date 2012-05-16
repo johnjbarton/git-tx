@@ -146,46 +146,26 @@ git archive --format=tar --prefix="$PROJECT_NAME"/ "$OTHER_BRANCH" "$OTHER_PREFI
 
 cd "$LOCAL_PATH"
 
-REFS_TX=refs/tx/"$PROJECT_NAME"
-REFS_TX_DIR="$LOCAL_GIT_DIR"/.git/"$REFS_TX"
-
-# record the local commit before our edits
-#
-git update-ref "$REFS_TX"/local_commit `git rev-parse HEAD`
-
-# record the local relative path
-#
-echo "$LOCAL_PREFIX" > "$REFS_TX_DIR"/local_prefix 
-
-# record the other commit we copied
-#
-git update-ref "$REFS_TX"/other_commit "$OTHER_COMMIT"
-
-# record the other relative path
-#
-echo "$OTHER_PREFIX" > "$REFS_TX_DIR"/other_prefix 
-
-# record the other repo
-# 
-echo "$OTHER_GIT_URL" > "$REFS_TX_DIR"/other_repo 
-
-# record the other local path
-#
-echo "$OTHER_PATH" > "$REFS_TX_DIR"/other_path 
-
-#store these records in the transplant
-#
-set -v -e
-cd "$REFS_TX_DIR"
-find . | xargs tar cf - | ( mkdir -p "$LOCAL_PATH"/.git-tx && cd "$LOCAL_PATH"/.git-tx && tar xf -)
-cd "$LOCAL_PATH"
-
 # commit our edits
 #
 git add -A
 
-git commit -a -m "Transplant $OTHER_PATH from $OTHER_GIT_URL @ $OTHER_BRANCH to $PROJECT_NAME/$OTHER_PREFIX \n (git tx-clone --name $PROJECT_NAME --branch $OTHER_BRANCH $OTHER_PATH)"
+git commit -a -m "Transplant $OTHER_PATH from $OTHER_GIT_URL @ $OTHER_BRANCH to $PROJECT_NAME/$OTHER_PREFIX \\n (git tx-clone --name $PROJECT_NAME --branch $OTHER_BRANCH $OTHER_PATH)"
+
+# record meta data for this transplant
+#
+META_TX_DIR="$LOCAL_GIT_DIR"/.git-tx/"$PROJECT_NAME"
+mkdir -p $META_TX_DIR
+echo $( git rev-parse HEAD ) > "$META_TX_DIR"/local_commit 
+echo "$OTHER_COMMIT"         > "$META_TX_DIR"/other_commit
+echo "$LOCAL_PREFIX"         > "$META_TX_DIR"/local_prefix 
+echo "$OTHER_PREFIX"         > "$META_TX_DIR"/other_prefix 
+echo "$OTHER_GIT_URL"        > "$META_TX_DIR"/other_git_url 
+
+# record the Other absolute path to the cloned dir, install dependent TODO
+#
+echo "$OTHER_PATH"          > "$META_TX_DIR"/other_path 
  
-git --no-pager log `git rev-parse $REFS_TX/local_commit`..HEAD
+git --no-pager log $( cat "$META_TX_DIR"/local_commit )..HEAD
  
 exit 0

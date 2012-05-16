@@ -1,17 +1,24 @@
 git-tx: git transplant -- maintain a tree composed of parts of other repositories
 
-git-tx synchronizes a directory in one repository to a corresponding directory in another git repository. 
-This supports composing projects from all or part of other projects.  
-Unlike git submodules or 'fake' git submodules,  normal git commands in a git-tx tracked directory work 
-as if there was no git-tx tracking.  Clones of the super-project are normal repos. 
-Only the developers who need to update the tracking directories need to know about git transplant.
-They use explicit git-tx commands to control cross-repo synchronization.  
+git-tx synchronizes a directory in one repository to a corresponding directory
+in another git repository. This supports composing projects from all or part 
+of other projects.  Unlike git submodules or 'fake' git submodules, 
+subdirectories can be tracked, normal git commands in a git-tx tracked 
+directory work as if there was no git-tx tracking.  Clones of the super-project 
+are normal repos. Only the developers who need to update the tracking 
+directories need to know about git transplant. They use explicit git-tx 
+commands to control cross-repo synchronization.  
 
-git-tx works with two local repositories. In the destination repository, you issue 'git-tx clone' to 
-copy a subdirectory from the other repository. As a side effect, git-tx stores information about the
-HEAD commit in both repositories and the paths to the subdirectories. This information is stored in
-a '.gittx' file in the destination subdirectory. Later, when either repository has changed, you 
-can use git-tx-pull or git-tx-push to resynchronize the directories.
+On the other hand, unlike git submodules or 'fake' git submodules, transplants
+are based on patches across trees rather than commits on full trees. 
+
+git-tx works with two local repositories. In the destination repository, you 
+issue 'git-tx clone' to copy a subdirectory from the other repository. As a 
+side effect, git-tx stores information about the HEAD commit in both 
+repositories and the paths to the subdirectories. This information is stored in
+a '.git-tx' file in the destination subdirectory. Later, when either repository
+has changed, you can use git-tx-pull or git-tx-push to resynchronize the 
+directories.
 
 
 Subcommands

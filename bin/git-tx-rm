@@ -46,8 +46,8 @@ while [ "$#" -ne 0 ]; do
 done
 
 LOCAL_GIT_DIR=$(git rev-parse --show-toplevel)
-rm -r "$LOCAL_GIT_DIR"/.git/refs/tx/"$PROJECT_NAME"
-
-echo "Removed " "$LOCAL_GIT_DIR"/.git/refs/tx/"$PROJECT_NAME"
+set -v
+rm -r "$LOCAL_GIT_DIR"/transplants/"$PROJECT_NAME"
+rm -r "$LOCAL_GIT_DIR"/.git-tx/"$PROJECT_NAME"
 
 exit 0
