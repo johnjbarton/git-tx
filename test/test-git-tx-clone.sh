@@ -93,6 +93,12 @@ if [ $( diff /tmp/git-tx-left/test/pushme.txt /tmp/git-tx-right/test/pushme.txt 
   exit 15
 fi
 
+OTHER_HEAD_SHA=$(cd /tmp/git-tx-right && git rev-parse HEAD && cd /tmp/git-tx-left)
+if [ "$OTHER_HEAD_SHA" != $( cat /tmp/git-tx-left/.git-tx/git-tx/other_commit ) ]; then
+  echo ">> FAIL << git-tx-push: other commit fails to record other head"
+  exit 17
+fi
+
 echo ---------------- test git-tx-pull -----------------------
 cd /tmp/git-tx-right
 echo "this is a test on $( date )" >> test/pullme.txt
@@ -100,6 +106,7 @@ git add test/pullme.txt
 git commit -m "test git-tx-pull"
 cd /tmp/git-tx-left
 
+echo "test -------------------------------------------------->  tx-pull"
 git tx-pull git-tx
 mustPass
 

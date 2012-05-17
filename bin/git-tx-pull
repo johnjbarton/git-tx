@@ -75,12 +75,14 @@ fi
 # create branch tx- by creating a commit from the change on the other tree 
 #
 git-tx-fetch "$PROJECT_NAME"
-exit 1
-git merge tx-"$PROJECT_NAME"
 
+git merge tx-"$PROJECT_NAME"
+echo "merged: $?"
 if [ $? -eq 0 ]; then 
 . git-tx-setdown "$PROJECT_NAME"
+ exit 0
 else
   echo "Complete the merge with branch tx-$PROJECT_NAME manually"
+  exit 1
 fi
-
+exit 0

@@ -88,16 +88,18 @@ fi
 # verify that the other tree is clean and we are up to date
 #
 CWD=$( pwd )
-cd $OTHER_PATH
+cd "$OTHER_PATH"
 require_clean_work_tree "tx-fetch"
 
 OTHER_GIT_DIR=$(git rev-parse --show-toplevel)
-
+cd "$OTHER_GIT_DIR"
 
 # patch this tree with changes from the other one
 #
 TMP_GIT_TX_PATCH=/tmp/git-tx-$$.patch
 git diff "$OTHER_COMMIT"..HEAD "--" "$OTHER_PREFIX" > "$TMP_GIT_TX_PATCH"
+
+echo "fetch patch in $(pwd) is $(cat $TMP_GIT_TX_PATCH)"
 
 OTHER_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 

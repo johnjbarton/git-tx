@@ -70,7 +70,7 @@ done
 if [ -z "$PROJECT_NAME" ]; then
   die "No project name"
 fi
-echo "Sourceing git-tx-other with $PROJECT_NAME"
+
 . $(dirname $0)/git-tx-other "$PROJECT_NAME"
 
 
@@ -121,6 +121,13 @@ cd "$OTHER_PATH"
 # commit the changes
 git add -A
 git commit -m "Patch from $LOCAL_URL $LOCAL_PREFIX at $LOCAL_COMMIT"
+
+OTHER_COMMIT=$(git rev-parse HEAD)
+
+cd "$LOCAL_GIT_DIR"
+# TODO don't source this, pass args
+. $(dirname $0)/git-tx-setdown
+cd "$OTHER_DIT_DIR"
 
 echo "patch committed, test then 'git push' or 'git reset HEAD'"
 echo "current directory is $( pwd )"
