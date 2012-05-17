@@ -35,7 +35,7 @@ FROM_D=`pwd`
 cd /tmp
 rm -r -f /tmp/git-tx-left
 rm -r -f /tmp/git-tx-right
-mkdir /tmp/notAGitDir
+mkdir -p /tmp/notAGitDir
 git clone git@github.com:johnjbarton/git-tx.git git-tx-left
 git clone git@github.com:johnjbarton/git-tx.git git-tx-right
 cd git-tx-left
@@ -115,15 +115,21 @@ if [ $( diff /tmp/git-tx-left/test/pullme.txt /tmp/git-tx-right/test/pullme.txt 
   exit 16
 fi
 
+echo "test -------------------------------------------------->  tx-pull --other"
+
+rm -r -f /tmp/git-tx-right
+
+git tx-pull git-tx
+mustFail
+set -x -v
+git tx-pull --other /tmp/git-tx/right git-tx
+mustPass
+exit 1
 echo ---------------- test git-tx-rm -----------------------
 
 echo "test -------------------------------------------------->  tx-rm"
-
-if [ ! "$( git tx-rm git-tx )" ]; then 
-  echo ">> FAIL << $?"
-else
-  echo "PASS"
-fi
+git tx-rm git-tx
+mustPass
 
 echo "test -------------------------------------------------->  directory clean up"
 LEFT_OVER_REFS=$(find /tmp/git-tx-left/.git | grep refs/tx/git-tx )

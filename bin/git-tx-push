@@ -15,6 +15,7 @@ git tx-push  <projectName>
 
 Squashes all changes on the local transplant subdirectory into a commit on the original other repo
 --
+o,other=             set <path> as source of transplant 
 v,verbose            echo information
 x,verbose_only       echo information then exit"
 
@@ -44,7 +45,11 @@ get_repo_base() {
 PROJECT_NAME=
 
 while [ "$#" -ne 0 ]; do
-	case "$1" in 
+	case "$1" in 	
+	-o|--other)
+	    shift 
+		OTHER_PATH=$1
+		;;
  	-v|--verbose)
  		VERBOSE=yes
  		;;

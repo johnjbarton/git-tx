@@ -5,15 +5,13 @@
 
 set -e 
 
-. $(dirname $0)/git-sh-setup.sh
-
-require_clean_work_tree "tx-pull"
 
 OPTIONS_SPEC="\
 git tx-push  <projectName>
 
 Merge changes on the transplanted subdirectory into this repo (git-tx-fetch, git merge)
 --
+o,other=             set <path> as source of transplant        
 v,verbose            echo information
 x,verbose_only       echo information then exit"
 
@@ -25,6 +23,10 @@ die() {
 usage() {
 	exec "$0" -h
 }
+
+. $(dirname $0)/git-sh-setup.sh
+
+require_clean_work_tree "tx-pull"
 
 eval "$(echo "$OPTIONS_SPEC" | git rev-parse --parseopt -- "$@" || echo exit $?)"
 
@@ -39,11 +41,15 @@ get_repo_base() {
 	) 2>/dev/null
 }
 
-
+set -x -v
 PROJECT_NAME=
 
 while [ "$#" -ne 0 ]; do
 	case "$1" in 
+	-o|--other)
+	    shift
+		OTHER_PATH=$1
+		;;
  	-v|--verbose)
  		VERBOSE=yes
  		;;
@@ -77,9 +83,15 @@ fi
 git-tx-fetch "$PROJECT_NAME"
 
 git merge tx-"$PROJECT_NAME"
-echo "merged: $?"
+
+LOCAL_COMMIT=$( git rev-parse HEAD )
+cd "$OTHER_PATH"
+OTHER_COMMIT=$( git rev-parse HEAD )
+cd "$LOCAL_GIT_DIR"
+
 if [ $? -eq 0 ]; then 
 . git-tx-setdown "$PROJECT_NAME"
+echo "setdown complete"
  exit 0
 else
   echo "Complete the merge with branch tx-$PROJECT_NAME manually"
