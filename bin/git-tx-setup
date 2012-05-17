@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# Copyright (c) 2010 Google Inc johnjbarton@google.com
+# Google BSD license http://code.google.com/google_bsd_license.html
+
+# source this file into git-tx shell scripts
+
+
+LOCAL_GIT_DIR=$(git rev-parse --show-toplevel)
+META_TX_DIR="$LOCAL_GIT_DIR"/.git-tx/"$PROJECT_NAME"
+
+LOCAL_COMMIT=$( cat "$META_TX_DIR"/local_commit )
+LOCAL_PREFIX=$( cat "$META_TX_DIR"/local_prefix )
+OTHER_COMMIT=$( cat "$META_TX_DIR"/other_commit )
+OTHER_PREFIX=$( cat "$META_TX_DIR"/other_prefix )
+OTHER_GIT_URL=$( cat "$META_TX_DIR"/other_git_url )
+

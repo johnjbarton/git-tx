@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# Copyright (c) 2010 Google Inc johnjbarton@google.com
+# Google BSD license http://code.google.com/google_bsd_license.html
+
+set -e 
+
+. $(dirname $0)/git-sh-setup.sh
+
+require_clean_work_tree "tx-pull"
+
+OPTIONS_SPEC="\
+git tx-push  <projectName>
+
+Merge changes on the transplanted subdirectory into this repo (git-tx-fetch, git merge)
+--
+v,verbose            echo information
+x,verbose_only       echo information then exit"
+
+die() {
+	echo >&2 "$@"
+	exit 1
+}
+
+usage() {
+	exec "$0" -h
+}
+
+eval "$(echo "$OPTIONS_SPEC" | git rev-parse --parseopt -- "$@" || echo exit $?)"
+
+get_repo_base() {
+	(
+		cd "`/bin/pwd`" &&
+		cd "$1" || cd "$1.git" &&
+		{
+			cd .git
+			pwd
+		}
+	) 2>/dev/null
+}
+
+
+PROJECT_NAME=
+
+while [ "$#" -ne 0 ]; do
+	case "$1" in 
+ 	-v|--verbose)
+ 		VERBOSE=yes
+ 		;;
+    -x|--verbose_only)
+        VERBOSE_ONLY=yes
+        VERBOSE=yes
+        ;;
+ 	--)                   # some kind of marker added by rev-parse
+		shift
+ 	    if [ "$#" -ne 1 ]; then
+ 	      die "$# project required"
+ 	    fi
+		PROJECT_NAME=$1
+		break
+		;;
+	*)
+		usage
+		;;
+	esac
+	shift
+done
+
+if [ -z "$PROJECT_NAME" ]; then
+  die "No project name"
+fi
+
+. $(dirname $0)/git-tx-other "$PROJECT_NAME"
+
+# create branch tx- by creating a commit from the change on the other tree 
+#
+git-tx-fetch "$PROJECT_NAME"
+exit 1
+git merge tx-"$PROJECT_NAME"
+
+if [ $? -eq 0 ]; then 
+. git-tx-setdown "$PROJECT_NAME"
+else
+  echo "Complete the merge with branch tx-$PROJECT_NAME manually"
+fi
+

@@ -3,17 +3,16 @@
 # Copyright (c) 2010 Google Inc johnjbarton@google.com
 # Google BSD license http://code.google.com/google_bsd_license.html
 
-
 set -e 
 
 . $(dirname $0)/git-sh-setup.sh
 
-require_clean_work_tree "tx-push"
+require_clean_work_tree "tx-fetch"
 
 OPTIONS_SPEC="\
 git tx-push  <projectName>
 
-Squashes all changes on the local transplant subdirectory into a commit on the original other repo
+Squashes all changes on the transplanted subdirectory into a commit on the this repo
 --
 v,verbose            echo information
 x,verbose_only       echo information then exit"
@@ -70,17 +69,16 @@ done
 if [ -z "$PROJECT_NAME" ]; then
   die "No project name"
 fi
-echo "Sourceing git-tx-other with $PROJECT_NAME"
+
 . $(dirname $0)/git-tx-other "$PROJECT_NAME"
 
-
 if [ "$VERBOSE" =  yes ]; then
-  echo "git tx push from local directory $LOCAL_PREFIX"
-  echo "git tx push to directory $OTHER_PATH"
-  echo "git tx push to repo $OTHER_GIT_URL"
-  echo "git tx push to directory of other git repo $OTHER_PREFIX" 
-  echo "git tx push diff from commit $LOCAL_COMMIT"
-  echo "git tx push diff to commit $OTHER_COMMIT"
+  echo "git tx fetch to local directory $LOCAL_PREFIX"
+  echo "git tx fetch from directory $OTHER_PATH"
+  echo "git tx fetch from repo $OTHER_GIT_URL"
+  echo "git tx fetch from directory of other git repo $OTHER_PREFIX" 
+  echo "git tx fetch diff to commit $LOCAL_COMMIT"
+  echo "git tx fetch diff from commit $OTHER_COMMIT"
 fi
 
 if [ "$VERBOSE_ONLY" = yes ]; then
@@ -91,37 +89,35 @@ fi
 #
 CWD=$( pwd )
 cd $OTHER_PATH
-require_clean_work_tree "tx-push"
-
-OTHER_DIFF=$( git diff "$OTHER_COMMIT"..HEAD )
-if [ "$OTHER_DIFF" ]; then
-  echo "Repo at $OTHER_PATH has commits ahead of this transplant, git tx pull first"
-  echo "$OTHER_DIFF"
-  exit 14
-fi
+require_clean_work_tree "tx-fetch"
 
 OTHER_GIT_DIR=$(git rev-parse --show-toplevel)
 
-cd "$LOCAL_GIT_DIR"
 
-# patch the other tree with changes from this one
+# patch this tree with changes from the other one
 #
 TMP_GIT_TX_PATCH=/tmp/git-tx-$$.patch
-git diff "$LOCAL_COMMIT"..HEAD "--" "$LOCAL_PREFIX" > "$TMP_GIT_TX_PATCH"
-cd "$OTHER_GIT_DIR" 
+git diff "$OTHER_COMMIT"..HEAD "--" "$OTHER_PREFIX" > "$TMP_GIT_TX_PATCH"
+
+OTHER_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
+
+# Mark the other tree as fetched-from by a branch
+git checkout -b tx-"$PROJECT_NAME"
+git checkout "$OTHER_BRANCH"
+
+cd "$LOCAL_GIT_DIR"
+
+LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
+
+git checkout -q --detach "$LOCAL_COMMIT" 
 patch -p1 < "$TMP_GIT_TX_PATCH"
-
-# now move over to the other tree
-
-LOCAL_URL=$(git config --get remote.origin.url)
-LOCAL_COMMIT=$(git rev-parse HEAD)
-cd "$OTHER_PATH"
-
 
 # commit the changes
 git add -A
-git commit -m "Patch from $LOCAL_URL $LOCAL_PREFIX at $LOCAL_COMMIT"
+git commit -m "Patch from $OTHER_GIT_URL $OTHER_PREFIX at $OTHER_COMMIT"
 
-echo "patch committed, test then 'git push' or 'git reset HEAD'"
-echo "current directory is $( pwd )"
+# Mark this tree as fetched-to by a branch
+git checkout  -b tx-"$PROJECT_NAME"
+git checkout -q "$LOCAL_BRANCH"
+
 exit 0

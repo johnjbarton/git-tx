@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # Copyright (c) 2010 Google Inc johnjbarton@google.com
+# Google BSD license http://code.google.com/google_bsd_license.html
 
 set -e
 
@@ -46,8 +47,8 @@ while [ "$#" -ne 0 ]; do
 done
 
 LOCAL_GIT_DIR=$(git rev-parse --show-toplevel)
-set -v
-rm -r "$LOCAL_GIT_DIR"/transplants/"$PROJECT_NAME"
+
+rm -r "$LOCAL_GIT_DIR"/.git/tx-other-repos/"$PROJECT_NAME"
 rm -r "$LOCAL_GIT_DIR"/.git-tx/"$PROJECT_NAME"
 
 exit 0

@@ -80,8 +80,6 @@ echo "this is a test on $( date )" >> test/pushme.txt
 git add test/pushme.txt
 git commit -m "test git-tx-push"
 
-set -x -v
-
 echo ---------------- test git-tx-push -x -----------------------
 git tx-push -x git-tx
 mustPass
@@ -90,12 +88,32 @@ echo ---------------- test git-tx-push -----------------------
 git tx-push git-tx
 mustPass
 
+if [ $( diff /tmp/git-tx-left/test/pushme.txt /tmp/git-tx-right/test/pushme.txt ) ]; then
+  echo ">> FAIL << git-tx-push: files not identical"
+  exit 15
+fi
+
+echo ---------------- test git-tx-pull -----------------------
+cd /tmp/git-tx-right
+echo "this is a test on $( date )" >> test/pullme.txt
+git add test/pullme.txt
+git commit -m "test git-tx-pull"
+cd /tmp/git-tx-left
+
+git tx-pull git-tx
+mustPass
+
+if [ $( diff /tmp/git-tx-left/test/pullme.txt /tmp/git-tx-right/test/pullme.txt ) ]; then
+  echo ">> FAIL << git-tx-pull: files not identical"
+  exit 16
+fi
+
 echo ---------------- test git-tx-rm -----------------------
 
 echo "test -------------------------------------------------->  tx-rm"
 
 if [ ! "$( git tx-rm git-tx )" ]; then 
-  echo ">> FAIL <<"
+  echo ">> FAIL << $?"
 else
   echo "PASS"
 fi

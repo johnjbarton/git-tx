@@ -1,0 +1,76 @@
+#!/bin/sh
+#
+# Copyright (c) 2010 Google Inc johnjbarton@google.com
+# Google BSD license http://code.google.com/google_bsd_license.html
+
+set -e 
+
+. $(dirname $0)/git-sh-setup.sh
+
+require_clean_work_tree "tx-other"
+
+OPTIONS_SPEC="\
+git tx-other  <projectName>
+
+returns the full path to the transplants other repository, or clones it 
+--
+v,verbose            echo information
+x,verbose_only       echo information then exit"
+
+die() {
+	echo >&2 "$@"
+	exit 1
+}
+
+usage() {
+	exec "$0" -h
+}
+
+eval "$(echo "$OPTIONS_SPEC" | git rev-parse --parseopt -- "$@" || echo exit $?)"
+
+PROJECT_NAME=
+
+while [ "$#" -ne 0 ]; do
+	case "$1" in 
+ 	-v|--verbose)
+ 		VERBOSE=yes
+ 		;;
+    -x|--verbose_only)
+        VERBOSE_ONLY=yes
+        VERBOSE=yes
+        ;;
+ 	--)                   # some kind of marker added by rev-parse
+		shift
+ 	    if [ "$#" -ne 1 ]; then
+ 	      die "$# project required"
+ 	    fi
+		PROJECT_NAME=$1
+		break
+		;;
+	*)
+		usage
+		;;
+	esac
+	shift
+done
+
+if [ -z "$PROJECT_NAME" ]; then
+  die "No project name"
+fi
+
+. $(dirname $0)/git-tx-setup "$PROJECT_NAME"
+
+OTHER_PATH_FILE="$LOCAL_GIT_DIR"/.git/tx-other-repos/"$PROJECT_NAME"
+
+if [ -r "$OTHER_PATH_FILE" ]; then
+  OTHER_PATH=$( cat "$OTHER_PATH_FILE" )
+else
+  OTHER_PATH=/tmp/git-tx-"$PROJECT_NAME"-repo-$$
+  echo "Need local copy of transplanted git repo,"
+  echo "git clone $OTHER_GIT_URL $OTHER_PATH [Y/n]? \c"
+  read answer
+  if [ answer == 'Y' ]; then 
+    git clone $OTHER_GIT_URL $OTHER_PATH
+    echo "$OTHER_PATH" > $OTHER_PATH_FILE
+  fi
+fi
