@@ -9,9 +9,62 @@
 LOCAL_GIT_DIR=$(git rev-parse --show-toplevel)
 META_TX_DIR="$LOCAL_GIT_DIR"/.git-tx/"$PROJECT_NAME"
 
-LOCAL_COMMIT=$( cat "$META_TX_DIR"/local_commit )
-LOCAL_PREFIX=$( cat "$META_TX_DIR"/local_prefix )
-OTHER_COMMIT=$( cat "$META_TX_DIR"/other_commit )
-OTHER_PREFIX=$( cat "$META_TX_DIR"/other_prefix )
-OTHER_GIT_URL=$( cat "$META_TX_DIR"/other_git_url )
+if [ -z "$LOCAL_COMMIT" ]; then
+	LOCAL_COMMIT=$( cat "$META_TX_DIR"/local_commit )
+fi
+if [ -z "$LOCAL_PREFIX" ]; then
+ 	LOCAL_PREFIX=$( cat "$META_TX_DIR"/local_prefix )
+fi
+if [ -z "$OTHER_COMMIT" ]; then
+	OTHER_COMMIT=$( cat "$META_TX_DIR"/other_commit )
+fi
+if [ -z "$OTHER_PREFIX" ]; then 
+	OTHER_PREFIX=$( cat "$META_TX_DIR"/other_prefix )
+fi
+if [ -z "$OTHER_GIT_URL" ]; then
+	OTHER_GIT_URL=$( cat "$META_TX_DIR"/other_git_url )
+fi
 
+setOtherPath() {
+  export OTHER_PATH
+  if [ $OTHER_PATH ]; then
+    return
+  fi
+
+  OTHER_PATH_FILE="$LOCAL_GIT_DIR"/.git/tx-other-repos/"$PROJECT_NAME"
+
+  if [ -r "$OTHER_PATH_FILE" ]; then
+    OTHER_PATH=$( cat "$OTHER_PATH_FILE" )
+    if [ ! -d "$OTHER_PATH" ]; then 
+      echo "No directory at stored value of other path: $OTHER_PATH"
+      echo "Use --other to reset"
+      exit 21
+    fi
+  fi
+
+# We have a stored path, check its value.
+
+  if [ ! -d "$OTHER_PATH" ]; then
+    OTHER_PATH=/tmp/git-tx-"$PROJECT_NAME"-repo-$$
+    echo "Need local copy of transplanted git repo,"
+    echo "git clone $OTHER_GIT_URL $OTHER_PATH [Y/n]? \c"
+    read answer
+    if [ "$answer" = "Y" ]; then 
+      git clone $OTHER_GIT_URL $OTHER_PATH
+    fi
+  fi
+
+}
+
+require_tx_branch() {
+  TX_COMMIT=$1
+  TX_BRANCH_COMMIT=$( git show-ref -q --verify refs/heads/tx-"$PROJECT_NAME" )
+  if [ $? -ne 0 ]; then  # the branch does not exist
+    git branch tx-"$PROJECT_NAME" "$TX_COMMIT"
+  else
+    if [ ! $( echo "$TX_BRANCH_COMMIT"  | grep "$TX_COMMIT") ]; then
+      # the branch is misplaced
+      git branch --force tx-"$PROJECT_NAME" "$TX_COMMIT"
+    fi
+  fi
+}

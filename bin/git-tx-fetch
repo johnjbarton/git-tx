@@ -5,10 +5,6 @@
 
 set -e 
 
-. $(dirname $0)/git-sh-setup.sh
-
-require_clean_work_tree "tx-fetch"
-
 OPTIONS_SPEC="\
 git tx-push  <projectName>
 
@@ -25,6 +21,10 @@ die() {
 usage() {
 	exec "$0" -h
 }
+
+. $(dirname $0)/git-sh-setup.sh
+
+require_clean_work_tree "tx-fetch"
 
 eval "$(echo "$OPTIONS_SPEC" | git rev-parse --parseopt -- "$@" || echo exit $?)"
 
@@ -70,7 +70,8 @@ if [ -z "$PROJECT_NAME" ]; then
   die "No project name"
 fi
 
-. $(dirname $0)/git-tx-other "$PROJECT_NAME"
+. $(dirname $0)/git-tx-setup 
+setOtherPath
 
 if [ "$VERBOSE" =  yes ]; then
   echo "git tx fetch to local directory $LOCAL_PREFIX"
@@ -93,33 +94,38 @@ require_clean_work_tree "tx-fetch"
 
 OTHER_GIT_DIR=$(git rev-parse --show-toplevel)
 cd "$OTHER_GIT_DIR"
-
-# patch this tree with changes from the other one
-#
-TMP_GIT_TX_PATCH=/tmp/git-tx-$$.patch
-git diff "$OTHER_COMMIT"..HEAD "--" "$OTHER_PREFIX" > "$TMP_GIT_TX_PATCH"
-
-echo "fetch patch in $(pwd) is $(cat $TMP_GIT_TX_PATCH)"
-
 OTHER_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 
-# Mark the other tree as fetched-from by a branch
-git checkout -b tx-"$PROJECT_NAME"
-git checkout "$OTHER_BRANCH"
+# verify that the other tree has our commit
+#
+require_tx_branch "$OTHER_COMMIT"
+
+# diff within the transplant
+#
+TMP_GIT_TX_PATCH=/tmp/git-tx-$$.patch
+git diff --no-prefix "$OTHER_COMMIT"..HEAD "--" "$OTHER_PREFIX" > "$TMP_GIT_TX_PATCH"
+
+if [ -z "$(cat $TMP_GIT_TX_PATCH)" ]; then
+  echo "Nothing to fetch, diff is empty"
+  exit 0
+fi
 
 cd "$LOCAL_GIT_DIR"
+cd "$LOCAL_PREFIX"
 
 LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
+require_tx_branch "$LOCAL_COMMIT"
 
-git checkout -q --detach "$LOCAL_COMMIT" 
-patch -p1 < "$TMP_GIT_TX_PATCH"
+git checkout tx-"$PROJECT_NAME"
+
+# patch this tree with changes from the other one, while at the prefix depth
+#
+patch < "$TMP_GIT_TX_PATCH"
 
 # commit the changes
 git add -A
 git commit -m "Patch from $OTHER_GIT_URL $OTHER_PREFIX at $OTHER_COMMIT"
 
-# Mark this tree as fetched-to by a branch
-git checkout  -b tx-"$PROJECT_NAME"
 git checkout -q "$LOCAL_BRANCH"
 
 exit 0

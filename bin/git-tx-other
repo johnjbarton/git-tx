@@ -5,10 +5,6 @@
 
 set -e 
 
-. $(dirname $0)/git-sh-setup.sh
-
-require_clean_work_tree "tx-other"
-
 OPTIONS_SPEC="\
 git tx-other  <projectName>
 
@@ -25,6 +21,11 @@ die() {
 usage() {
 	exec "$0" -h
 }
+
+
+. $(dirname $0)/git-sh-setup.sh
+
+require_clean_work_tree "tx-other"
 
 eval "$(echo "$OPTIONS_SPEC" | git rev-parse --parseopt -- "$@" || echo exit $?)"
 
@@ -58,19 +59,29 @@ if [ -z "$PROJECT_NAME" ]; then
   die "No project name"
 fi
 
-. $(dirname $0)/git-tx-setup "$PROJECT_NAME"
+. $(dirname $0)/git-tx-setup 
 
 OTHER_PATH_FILE="$LOCAL_GIT_DIR"/.git/tx-other-repos/"$PROJECT_NAME"
 
 if [ -r "$OTHER_PATH_FILE" ]; then
   OTHER_PATH=$( cat "$OTHER_PATH_FILE" )
-else
+  if [ ! -d "$OTHER_PATH" ]; then 
+    echo "No directory at stored value of other path: $OTHER_PATH"
+    echo "Use --other to reset"
+    exit 21
+  fi
+fi
+
+if [ ! -d "$OTHER_PATH" ]; then
   OTHER_PATH=/tmp/git-tx-"$PROJECT_NAME"-repo-$$
   echo "Need local copy of transplanted git repo,"
   echo "git clone $OTHER_GIT_URL $OTHER_PATH [Y/n]? \c"
   read answer
-  if [ answer == 'Y' ]; then 
+  if [ "$answer" = "Y" ]; then 
     git clone $OTHER_GIT_URL $OTHER_PATH
     echo "$OTHER_PATH" > $OTHER_PATH_FILE
   fi
 fi
+
+echo "$OTHER_PATH"
+

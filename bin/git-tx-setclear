@@ -1,0 +1,12 @@
+#!/bin/sh
+#
+# Copyright (c) 2010 Google Inc johnjbarton@google.com
+# Google BSD license http://code.google.com/google_bsd_license.html
+
+# source this file into git-tx shell scripts
+
+LOCAL_COMMIT=
+LOCAL_PREFIX=
+OTHER_COMMIT=
+OTHER_PREFIX=
+OTHER_GIT_URL=

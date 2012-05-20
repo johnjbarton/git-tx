@@ -5,28 +5,44 @@
 export PATH=$PATH:`pwd`/bin
 
 mustFail() {
-  if [ $? -eq 1 ]; then
+  RC=$?
+  if [ $RC -ne 0 ]; then
     echo "PASS"
   else
-    echo ">> FAIL <<"
-    exit 10
+    echo ">> MUST FAIL $RC <<"
+    exit $RC
   fi
   beClean
 }
 mustPass() {
-  if [ $? -eq 0 ]; then
+  RC=$?
+  if [ $RC -eq 0 ]; then
     echo "PASS"
   else
-    echo ">> FAIL <<"
-    exit 10
+    echo ">> FAIL: $RC <<"
+    exit $RC
   fi
   beClean
 }
 beClean() {
   if [ `pwd` != "/tmp/git-tx-left" ]; then
-    echo ">> FAIL << Did not return to /tmp/git-tx-left, still in `pwd` "
+    echo ">>>>>>>>>>>>> FAIL:  Did not return to /tmp/git-tx-left, still in `pwd` "
     exit 13
   fi
+}
+checkBranches() {
+  LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
+  if [ "$LOCAL_BRANCH" != "master" ]; then 
+    echo ">>>>>>>>>>>>> FAIL:  Local not on master $LOCAL_BRANCH"
+    exit 22
+  fi
+  cd /tmp/git-tx-right
+  OTHER_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
+  if [ "$OTHER_BRANCH" != "master" ]; then 
+    echo ">>>>>>>>>>>>> FAIL:  Other not on master $OTHER_BRANCH"
+    exit 23
+  fi
+  cd /tmp/git-tx-left
 }
 
 # set up for testing
@@ -58,16 +74,18 @@ echo "test -------------------------------------------------->  -x explain `pwd`
 git tx-clone -x /tmp/git-tx-right/test
 mustPass
 
-echo "test -------------------------------------------------->  normal usage"
-git tx-clone /tmp/git-tx-right/test
+echo "test -------------------------------------------------->  normal, with --prefix"
+git tx-clone --prefix git-tx/prefix/test /tmp/git-tx-right/test
 mustPass
 
+checkBranches
+
 echo "test -------------------------------------------------->  correct copy"
-DELTA=`diff /tmp/git-tx-left/git-tx/test /tmp/git-tx-right/test`
+DELTA=`diff /tmp/git-tx-left/git-tx/prefix/test /tmp/git-tx-right/test`
 if  [ -z "$DELTA" ]; then
   echo "PASS"
 else
-  echo ">> FAIL << $DELTA"
+  echo ">>>>>>>>>>>>> FAIL:  $DELTA"
   exit 11
 fi
 
@@ -75,9 +93,14 @@ echo "test -------------------------------------------------->  directory exists
 git tx-clone /tmp/git-tx-right
 mustFail
 
+if [ -z "$( cat /tmp/git-tx-left/.git-tx/git-tx/local_prefix)" ]; then
+  echo ">>>>>>>>>>>>> FAIL:  Local prefix blank"
+  exit 19
+fi
 
-echo "this is a test on $( date )" >> test/pushme.txt
-git add test/pushme.txt
+TX_PUSH_TEST="git-tx/prefix/test/pushme.txt"
+echo "this is a test on $( date )" >> "$TX_PUSH_TEST"
+git add "$TX_PUSH_TEST"
 git commit -m "test git-tx-push"
 
 echo ---------------- test git-tx-push -x -----------------------
@@ -88,16 +111,18 @@ echo ---------------- test git-tx-push -----------------------
 git tx-push git-tx
 mustPass
 
-if [ $( diff /tmp/git-tx-left/test/pushme.txt /tmp/git-tx-right/test/pushme.txt ) ]; then
-  echo ">> FAIL << git-tx-push: files not identical"
+if [ "$( diff /tmp/git-tx-left/"$TX_PUSH_TEST" /tmp/git-tx-right/test/pushme.txt )" ]; then
+  echo ">>>>>>>>>>>>> FAIL:  git-tx-push: files not identical"
   exit 15
 fi
 
 OTHER_HEAD_SHA=$(cd /tmp/git-tx-right && git rev-parse HEAD && cd /tmp/git-tx-left)
 if [ "$OTHER_HEAD_SHA" != $( cat /tmp/git-tx-left/.git-tx/git-tx/other_commit ) ]; then
-  echo ">> FAIL << git-tx-push: other commit fails to record other head"
+  echo ">>>>>>>>>>>>> FAIL:  git-tx-push: other commit fails to record other head"
   exit 17
 fi
+
+checkBranches
 
 echo ---------------- test git-tx-pull -----------------------
 cd /tmp/git-tx-right
@@ -106,25 +131,58 @@ git add test/pullme.txt
 git commit -m "test git-tx-pull"
 cd /tmp/git-tx-left
 
-echo "test -------------------------------------------------->  tx-pull"
+rm -r -f /tmp/git-tx-other
+cp -r /tmp/git-tx-right /tmp/git-tx-other
+
+echo "test -------------------------------------------------->  tx-pull -x"
+git tx-pull -x git-tx
+
+echo "test -------------------------------------------------->  tx-pull "
 git tx-pull git-tx
 mustPass
 
-if [ $( diff /tmp/git-tx-left/test/pullme.txt /tmp/git-tx-right/test/pullme.txt ) ]; then
-  echo ">> FAIL << git-tx-pull: files not identical"
+if [ ! -e /tmp/git-tx-left/git-tx/prefix/test/pullme.txt ]; then
+  echo ">>>>>>>>>>>>> FAIL:  23 no /tmp/git-tx-left/test/pullme.txt"
+  exit 23
+fi
+
+if [ $( diff /tmp/git-tx-left/git-tx/prefix/test/pullme.txt /tmp/git-tx-right/test/pullme.txt ) ]; then
+  echo ">>>>>>>>>>>>> FAIL:  16 git-tx-pull: files not identical"
   exit 16
 fi
 
-echo "test -------------------------------------------------->  tx-pull --other"
+EXTRA_FILES="$(find /tmp/git-tx-left/ -name pullme.txt | wc -l)"
+if [ "$EXTRA_FILES" -ne "1" ]; then
+  echo ">>>>>>>>>>>>> FAIL:24, $EXTRA_FILES extra files"
+  find /tmp/git-tx-left/ -name pullme.txt
+fi
+
+checkBranches
 
 rm -r -f /tmp/git-tx-right
+cd /tmp/git-tx-other
+echo "this is another test on $( date )" >> test/pullme.txt
+git add test/pullme.txt
+git commit -m "test git-tx-pull --other"
+cd /tmp/git-tx-left
+
+echo "test -------------------------------------------------->  tx-pull missing --other"
 
 git tx-pull git-tx
 mustFail
-set -x -v
-git tx-pull --other /tmp/git-tx/right git-tx
+
+echo "test -------------------------------------------------->  tx-pull --other"
+
+git tx-pull --other /tmp/git-tx-other git-tx
 mustPass
-exit 1
+
+if [ $( diff /tmp/git-tx-left/git-tx/prefix/test/pullme.txt /tmp/git-tx-other/test/pullme.txt ) ]; then
+  echo ">>>>>>>>>>>>> FAIL:  git-tx-pull: files not identical"
+  exit 16
+fi
+mv /tmp/git-tx-other /tmp/git-tx-right
+checkBranches
+
 echo ---------------- test git-tx-rm -----------------------
 
 echo "test -------------------------------------------------->  tx-rm"
@@ -136,7 +194,7 @@ LEFT_OVER_REFS=$(find /tmp/git-tx-left/.git | grep refs/tx/git-tx )
 if [ -z "$LEFT_OVER_REFS" ]; then
   echo "PASS"
 else
-  echo ">> FAIL << LEFT_OVER_REFS=\"$LEFT_OVER_REFS\""
+  echo ">>>>>>>>>>>>> FAIL:  LEFT_OVER_REFS=\"$LEFT_OVER_REFS\""
   exit 12
 fi
 

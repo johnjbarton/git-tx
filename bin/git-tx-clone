@@ -6,16 +6,13 @@
 
 set -e 
 
-SUBDIRECTORY_OK='yes'
-. $(dirname $0)/git-sh-setup.sh
-require_clean_work_tree "tx-clone"
-
 OPTIONS_SPEC="\
 git tx-clone [-x] [-name <projectName> ] [-t <branchname>] <other_path> 
 
 Copy and track another local repository subdirectory into this directory in this repository.
 --
 n,name=              override default name for transplant branch
+p,prefix=             override default <project-name>/<other_prefix> for local path prefix
 t,branch=            override 'master' default branch of other
 x,explain            echo information then exit"
 
@@ -28,23 +25,14 @@ usage() {
 	exec "$0" -h
 }
 
+SUBDIRECTORY_OK='yes'
+. $(dirname $0)/git-sh-setup.sh
+require_clean_work_tree "tx-clone"
+
 eval "$(echo "$OPTIONS_SPEC" | git rev-parse --parseopt -- "$@" || echo exit $?)"
 
-get_repo_base() {
-	(
-		cd "`/bin/pwd`" &&
-		cd "$1" || cd "$1.git" &&
-		{
-			cd .git
-			pwd
-		}
-	) 2>/dev/null
-}
-
-
 PROJECT_NAME=
-OTHER_BRANCH=
-OTHER_PATH=
+. $(dirname $0)/git-tx-setclear
 
 while [ "$#" -ne 0 ]; do
 	case "$1" in 
@@ -59,6 +47,10 @@ while [ "$#" -ne 0 ]; do
     -x|--explain)
         EXPLAIN=yes
         ;;
+    -p|--prefix)
+    	shift
+    	LOCAL_PREFIX=$1
+    	;;
  	--)                   # some kind of marker added by rev-parse
 		shift
  	    if [ "$#" -ne 1 ]; then
@@ -84,13 +76,13 @@ case "$OTHER_PATH" in
    		die "Path to other git repository required"
 		;;
 esac
-
+echo "Local prefix $LOCAL_PREFIX"
 # Strip refs/head/<branch> to give <branch>
 #
 LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 
 LOCAL_PATH=`pwd`
-LOCAL_PREFIX=$( git rev-parse --show-prefix )
+DEFAULT_LOCAL_PREFIX=$( git rev-parse --show-prefix )
 
 # default to 'master'
 if [ -z "$OTHER_BRANCH" ]; then
@@ -125,7 +117,13 @@ if [ -z "$PROJECT_NAME" ]; then
 fi
 
 TX_BRANCH="tx.""$PROJECT_NAME"
-DESTINATION="$LOCAL_PATH"/"$PROJECT_NAME"/"$OTHER_PREFIX"
+if [ -z "$LOCAL_PREFIX" ]; then
+  LOCAL_PREFIX="$DEFAULT_LOCAL_PREFIX""$PROJECT_NAME"/"$OTHER_PREFIX"
+fi
+
+echo "Second Local prefix $LOCAL_PREFIX"
+
+DESTINATION="$LOCAL_GIT_DIR"/"$LOCAL_PREFIX"
 
 if [ -e "$DESTINATION" ]; then
   die "Destination \"$DESTINATION\" already exists"
@@ -141,20 +139,23 @@ if [ "$EXPLAIN" =  yes ]; then
 fi
 
 OTHER_COMMIT="$( git rev-parse $OTHER_BRANCH )"
+git branch --no-track  tx-"$PROJECT_NAME"
 
 # copy the other subtree into our local tree
 #
-git archive --format=tar --prefix="$PROJECT_NAME"/ "$OTHER_BRANCH" "$OTHER_PREFIX" | ( cd "$LOCAL_PATH" && tar xfp -)
+cd "$OTHER_PREFIX"
+git archive --format=tar "$OTHER_BRANCH" | ( cd "$LOCAL_GIT_DIR" && mkdir -p "$DESTINATION" && cd "$DESTINATION" && tar xfp -)
 
-cd "$LOCAL_PATH"
+cd "$DESTINATION"
 
 # commit our edits
 #
 git add -A
 
-git commit -a -m "Transplant $OTHER_PATH from $OTHER_GIT_URL @ $OTHER_BRANCH to $PROJECT_NAME/$OTHER_PREFIX \\n (git tx-clone --name $PROJECT_NAME --branch $OTHER_BRANCH $OTHER_PATH)"
+git commit -a -m "Transplant $OTHER_PREFIX from $OTHER_GIT_URL @ $OTHER_BRANCH to $LOCAL_PREFIX"
 
 LOCAL_COMMIT=$( git rev-parse HEAD )
+git branch --no-track tx-"$PROJECT_NAME"
 
 . git-tx-setdown
  

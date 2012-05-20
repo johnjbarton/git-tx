@@ -41,8 +41,8 @@ get_repo_base() {
 	) 2>/dev/null
 }
 
-set -x -v
 PROJECT_NAME=
+. $(dirname $0)/git-tx-setclear
 
 while [ "$#" -ne 0 ]; do
 	case "$1" in 
@@ -76,9 +76,24 @@ if [ -z "$PROJECT_NAME" ]; then
   die "No project name"
 fi
 
-. $(dirname $0)/git-tx-other "$PROJECT_NAME"
+. $(dirname $0)/git-tx-setup 
+setOtherPath
 
-# create branch tx- by creating a commit from the change on the other tree 
+
+if [ "$VERBOSE" =  yes ]; then
+  echo "git tx pull to local directory $LOCAL_PREFIX"
+  echo "git tx pull from directory $OTHER_PATH"
+  echo "git tx pull from repo $OTHER_GIT_URL"
+  echo "git tx pull from directory of other git repo $OTHER_PREFIX" 
+  echo "git tx pull diff to commit $LOCAL_COMMIT"
+  echo "git tx pull diff from commit $OTHER_COMMIT"
+fi
+
+if [ "$VERBOSE_ONLY" = yes ]; then
+  exit 0
+fi
+
+# Create a commit on branch tx-<project_name> from the change on the other tree 
 #
 git-tx-fetch "$PROJECT_NAME"
 
@@ -91,7 +106,6 @@ cd "$LOCAL_GIT_DIR"
 
 if [ $? -eq 0 ]; then 
 . git-tx-setdown "$PROJECT_NAME"
-echo "setdown complete"
  exit 0
 else
   echo "Complete the merge with branch tx-$PROJECT_NAME manually"
