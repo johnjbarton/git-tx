@@ -76,7 +76,7 @@ case "$OTHER_PATH" in
    		die "Path to other git repository required"
 		;;
 esac
-echo "Local prefix $LOCAL_PREFIX"
+
 # Strip refs/head/<branch> to give <branch>
 #
 LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
@@ -111,17 +111,17 @@ OTHER_GIT_URL=$( git config --get remote.origin.url ) || ( cd "$LOCAL_PATH"; die
 # The git archive is relative to current directory, cd up so our relative path is appended to project name
 cd "$OTHER_CDUP"
 
-PROJECT_NAME=$( basename "$OTHER_GIT_URL" .git )
 if [ -z "$PROJECT_NAME" ]; then
-  die "No project name"
+  PROJECT_NAME=$( basename "$OTHER_GIT_URL" .git )
+  if [ -z "$PROJECT_NAME" ]; then
+    die "No project name"
+  fi
 fi
 
 TX_BRANCH="tx.""$PROJECT_NAME"
 if [ -z "$LOCAL_PREFIX" ]; then
   LOCAL_PREFIX="$DEFAULT_LOCAL_PREFIX""$PROJECT_NAME"/"$OTHER_PREFIX"
 fi
-
-echo "Second Local prefix $LOCAL_PREFIX"
 
 DESTINATION="$LOCAL_GIT_DIR"/"$LOCAL_PREFIX"
 
