@@ -4,7 +4,7 @@
 # Google BSD license http://code.google.com/google_bsd_license.html
 
 
-set -e 
+set -e
 
 OPTIONS_SPEC="\
 git tx-clone [-x] [-name <projectName> ] [-t <branchname>] <other_path> 
@@ -108,7 +108,7 @@ OTHER_PREFIX=$( git rev-parse --show-prefix )
 OTHER_CDUP=$( git rev-parse --show-cdup )
 OTHER_GIT_URL=$( git config --get remote.origin.url ) || ( cd "$LOCAL_PATH"; die "Other git repo at $OTHER_PATH has no origin" )
 
-# The git archive is relative to current directory, cd up so our relative path is appended to project name
+# The archive is relative to current directory, cd up so our relative path is appended to project name
 cd "$OTHER_CDUP"
 
 if [ -z "$PROJECT_NAME" ]; then
@@ -139,12 +139,15 @@ if [ "$EXPLAIN" =  yes ]; then
 fi
 
 OTHER_COMMIT="$( git rev-parse $OTHER_BRANCH )"
-git branch --no-track  tx-"$PROJECT_NAME"
 
 # copy the other subtree into our local tree
 #
-cd "$OTHER_PREFIX"
-git archive --format=tar "$OTHER_BRANCH" | ( cd "$LOCAL_GIT_DIR" && mkdir -p "$DESTINATION" && cd "$DESTINATION" && tar xfp -)
+ORIG_OTHER_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
+git checkout "$OTHER_BRANCH"
+tar -c -C  "$OTHER_PREFIX" . | ( cd "$LOCAL_GIT_DIR" && mkdir -p "$DESTINATION" && cd "$DESTINATION" && tar xfp -)
+
+git branch --no-track  tx-"$PROJECT_NAME"
+git checkout "$ORIG_OTHER_BRANCH"
 
 cd "$DESTINATION"
 
@@ -157,7 +160,7 @@ git commit -a -m "Transplant $OTHER_PREFIX from $OTHER_GIT_URL @ $OTHER_BRANCH t
 LOCAL_COMMIT=$( git rev-parse HEAD )
 git branch --no-track tx-"$PROJECT_NAME"
 
-. git-tx-setdown
+. $(dirname $0)/git-tx-setdown
  
 git --no-pager log $( cat "$META_TX_DIR"/local_commit )..HEAD
  
