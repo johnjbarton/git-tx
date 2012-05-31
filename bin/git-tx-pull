@@ -5,7 +5,6 @@
 
 set -e 
 
-
 OPTIONS_SPEC="\
 git tx-push  <projectName>
 
