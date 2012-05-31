@@ -46,11 +46,13 @@ setOtherPath() {
 
   if [ ! -d "$OTHER_PATH" ]; then
     OTHER_PATH=/tmp/git-tx-"$PROJECT_NAME"-repo-$$
-    echo "Need local copy of transplanted git repo,"
+    echo "Need --other or local copy of transplanted git repo,"
     echo "git clone $OTHER_GIT_URL $OTHER_PATH [Y/n]? \c"
     read answer
     if [ "$answer" = "Y" ]; then 
       git clone $OTHER_GIT_URL $OTHER_PATH
+    else
+      exit 26
     fi
   fi
 

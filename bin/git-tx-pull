@@ -95,7 +95,7 @@ fi
 
 # Create a commit on branch tx-<project_name> from the change on the other tree 
 #
-git-tx-fetch "$PROJECT_NAME"
+$(dirname $0)/git-tx-fetch "$PROJECT_NAME"
 
 git merge tx-"$PROJECT_NAME"
 
@@ -105,7 +105,7 @@ OTHER_COMMIT=$( git rev-parse HEAD )
 cd "$LOCAL_GIT_DIR"
 
 if [ $? -eq 0 ]; then 
-. git-tx-setdown "$PROJECT_NAME"
+. $(dirname $0)/git-tx-setdown "$PROJECT_NAME"
  exit 0
 else
   echo "Complete the merge with branch tx-$PROJECT_NAME manually"
