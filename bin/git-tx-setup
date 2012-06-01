@@ -81,3 +81,8 @@ require_tx_branch() {
     fi
   fi
 }
+
+advance_tx_branch() {
+  PREVIOUS_TX=$1
+  git update-ref refs/heads/tx-"$PROJECT_NAME" $( git rev-parse HEAD ) "$PREVIOUS_TX"
+}

@@ -91,10 +91,10 @@ OTHER_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 
 require_tx_branch "$OTHER_COMMIT"
 
-OTHER_DIFF=$( git diff "$OTHER_COMMIT"..HEAD )
+OTHER_DIFF=$( git log --oneline "$OTHER_COMMIT"..HEAD )
 if [ "$OTHER_DIFF" ]; then
-  echo "Repo at $OTHER_PATH has commits ahead of this transplant, git tx pull first"
   echo "$OTHER_DIFF"
+  echo "Repo at $OTHER_PATH has ^these^ commits ahead of this transplant, git tx pull first"
   exit 14
 fi
 
@@ -122,11 +122,12 @@ LOCAL_URL=$(git config --get remote.origin.url)
 # patch the other tree, 
 #
 cd "$OTHER_PATH"
+cd "$OTHER_PREFIX"
 
 git checkout tx-"$PROJECT_NAME"
 
 # patch while setting at the other path depth and using no prefix
-#
+ 
 patch < "$TMP_GIT_TX_PATCH"
 
 # commit the changes

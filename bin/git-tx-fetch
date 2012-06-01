@@ -107,7 +107,10 @@ git diff --no-prefix "$OTHER_COMMIT"..HEAD "--" "$OTHER_PREFIX" > "$TMP_GIT_TX_P
 
 if [ -z "$(cat $TMP_GIT_TX_PATCH)" ]; then
   echo "Nothing to fetch, diff is empty"
-  exit 30
+  cd "$OTHER_GIT_DIR"
+  advance_tx_branch "$OTHER_COMMIT"
+  cd "$LOCAL_GIT_DIR"
+  exit 0
 fi
 
 cd "$LOCAL_GIT_DIR"
@@ -127,5 +130,9 @@ git add -A
 git commit -m "Patch from $OTHER_GIT_URL $OTHER_PREFIX at $OTHER_COMMIT"
 
 git checkout -q "$LOCAL_BRANCH"
+
+cd "$OTHER_GIT_DIR"
+advance_tx_branch "$OTHER_COMMIT"
+cd "$LOCAL_GIT_DIR"
 
 exit 0

@@ -98,14 +98,17 @@ $(dirname $0)/git-tx-fetch "$PROJECT_NAME"
 
 require_tx_branch "$LOCAL_COMMIT"
 
+# bring that commit over
+#
 git merge tx-"$PROJECT_NAME"
+MERGE_RC=$?
 
-LOCAL_COMMIT=$( git rev-parse HEAD )
-cd "$OTHER_PATH"
-OTHER_COMMIT=$( git rev-parse HEAD )
-cd "$LOCAL_GIT_DIR"
 
-if [ $? -eq 0 ]; then 
+if [ "$MERGE_RC" -eq 0 ]; then 
+  # advance our marker and save it
+  cd "$OTHER_PATH"
+  OTHER_COMMIT=$( git rev-parse HEAD )
+  cd "$LOCAL_GIT_DIR"
 . $(dirname $0)/git-tx-setdown "$PROJECT_NAME"
  exit 0
 else
