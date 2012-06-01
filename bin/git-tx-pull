@@ -96,6 +96,8 @@ fi
 #
 $(dirname $0)/git-tx-fetch "$PROJECT_NAME"
 
+require_tx_branch "$LOCAL_COMMIT"
+
 git merge tx-"$PROJECT_NAME"
 
 LOCAL_COMMIT=$( git rev-parse HEAD )

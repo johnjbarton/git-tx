@@ -64,8 +64,14 @@ require_tx_branch() {
     echo "usage require_tx_branch <commit-sha>"
     exit 27
   fi
-  set +e
-  TX_BRANCH_COMMIT=$( git show-ref -q --verify refs/heads/tx-"$PROJECT_NAME" )
+  
+  set +e 
+  git rev-parse -q --verify "$TX_COMMIT" > /dev/null
+  if [ $? -ne 0 ]; then
+    echo "The git repo at $( pwd ) does not contain the git-tx commit $TX_COMMIT"
+    exit 28
+  fi
+  TX_BRANCH_COMMIT=$( git rev-parse -q --verify tx-"$PROJECT_NAME" )
   if [ $? -ne 0 ]; then  # the branch does not exist
     git branch tx-"$PROJECT_NAME" "$TX_COMMIT"
   else
