@@ -4,30 +4,32 @@
 # Google BSD license http://code.google.com/google_bsd_license.html
 
 
-set -e
+set -e 
 
 OPTIONS_SPEC="\
-git tx-clone [-x] [-name <projectName> ] [-t <branchname>] <other_path> 
+git tx-clone [-x] [-f] [-name <projectName> ] [-t <branchname>] <other_path> 
 
 Copy and track another local repository subdirectory into this directory in this repository.
 --
 n,name=              override default name for transplant branch
 p,prefix=             override default <project-name>/<other_prefix> for local path prefix
 t,branch=            override 'master' default branch of other
+f,force              clone even if there are local changes
 x,explain            echo information then exit"
 
 die() {
-	echo >&2 "$@"
-	exit 1
+  echo >&2 "$@"
+  exit 1
 }
 
 usage() {
-	exec "$0" -h
+  exec "$0" -h
 }
 
 SUBDIRECTORY_OK='yes'
 . $(dirname $0)/git-sh-setup.sh
-require_clean_work_tree "tx-clone"
+
+
 
 eval "$(echo "$OPTIONS_SPEC" | git rev-parse --parseopt -- "$@" || echo exit $?)"
 
@@ -35,47 +37,54 @@ PROJECT_NAME=
 . $(dirname $0)/git-tx-setclear
 
 while [ "$#" -ne 0 ]; do
-	case "$1" in 
-	-n|--name)
-	    shift
-		PROJECT_NAME=$1
-		;;
-	-t|--branch)
-		shift
-		OTHER_BRANCH=$1
-		;;
+  case "$1" in 
+  -n|--name)
+      shift
+    PROJECT_NAME=$1
+    ;;
+  -t|--branch)
+    shift
+    OTHER_BRANCH=$1
+    ;;
     -x|--explain)
         EXPLAIN=yes
         ;;
+    -f|--force)
+        FORCE=yes
+        ;;
     -p|--prefix)
-    	shift
-    	LOCAL_PREFIX=$1
-    	;;
- 	--)                   # some kind of marker added by rev-parse
-		shift
- 	    if [ "$#" -ne 1 ]; then
- 	      die "other_path required"
- 	    fi
-		OTHER_PATH=$1
-		break
-		;;
-	*)
-		usage
-		;;
-	esac
-	shift
+      shift
+      LOCAL_PREFIX=$1
+      ;;
+     --)                   # some kind of marker added by rev-parse
+      shift
+      if [ "$#" -ne 1 ]; then
+        die "other_path required"
+      fi
+      OTHER_PATH=$1
+      break
+      ;;
+    *)
+      usage
+      ;;
+    esac
+    shift
 done
 
 case "$OTHER_PATH" in 
-	*/)
-		;;
-	*?)
-	    OTHER_PATH="$OTHER_PATH"/
-	    ;;
-	 *)
-   		die "Path to other git repository required"
-		;;
+  */)
+    ;;
+  *?)
+      OTHER_PATH="$OTHER_PATH"/
+      ;;
+   *)
+       die "Path to other git repository required"
+    ;;
 esac
+
+if [ "$FORCE" != yes ]; then
+  require_clean_work_tree "tx-clone"
+fi
 
 # Strip refs/head/<branch> to give <branch>
 #
