@@ -46,11 +46,13 @@ setOtherPath() {
 
   if [ ! -d "$OTHER_PATH" ]; then
     OTHER_PATH=/tmp/git-tx-"$PROJECT_NAME"-repo-$$
-    echo "Need local copy of transplanted git repo,"
+    echo "Need --other <for $OTHER_PREFIX> or local copy of transplanted git repo,"
     echo "git clone $OTHER_GIT_URL $OTHER_PATH [Y/n]? \c"
     read answer
     if [ "$answer" = "Y" ]; then 
       git clone $OTHER_GIT_URL $OTHER_PATH
+    else
+      exit 26
     fi
   fi
 
@@ -58,7 +60,18 @@ setOtherPath() {
 
 require_tx_branch() {
   TX_COMMIT=$1
-  TX_BRANCH_COMMIT=$( git show-ref -q --verify refs/heads/tx-"$PROJECT_NAME" )
+  if [ -z "$TX_COMMIT" ]; then
+    echo "usage require_tx_branch <commit-sha>"
+    exit 27
+  fi
+  
+  set +e 
+  git rev-parse -q --verify "$TX_COMMIT" > /dev/null
+  if [ $? -ne 0 ]; then
+    echo "The git repo at $( pwd ) does not contain the git-tx commit $TX_COMMIT"
+    exit 28
+  fi
+  TX_BRANCH_COMMIT=$( git rev-parse -q --verify tx-"$PROJECT_NAME" )
   if [ $? -ne 0 ]; then  # the branch does not exist
     git branch tx-"$PROJECT_NAME" "$TX_COMMIT"
   else
