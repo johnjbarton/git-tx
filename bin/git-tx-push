@@ -4,7 +4,6 @@
 # Google BSD license http://code.google.com/google_bsd_license.html
 
 
-set -e 
 
 OPTIONS_SPEC="\
 git tx-push  <projectName>
@@ -122,7 +121,6 @@ LOCAL_URL=$(git config --get remote.origin.url)
 # patch the other tree, 
 #
 cd "$OTHER_PATH"
-cd "$OTHER_PREFIX"
 
 git checkout tx-"$PROJECT_NAME"
 

@@ -73,10 +73,16 @@ require_tx_branch() {
   fi
   TX_BRANCH_COMMIT=$( git rev-parse -q --verify tx-"$PROJECT_NAME" )
   if [ $? -ne 0 ]; then  # the branch does not exist
+    DEBUG echo "The tx-$PROJECT_NAME branch does not exist"
     git branch tx-"$PROJECT_NAME" "$TX_COMMIT"
   else
     if [ ! $( echo "$TX_BRANCH_COMMIT"  | grep "$TX_COMMIT") ]; then
       # the branch is misplaced
+      DEBUG echo "The tx-$PROJECT_NAME branch was misplaced, branch commit:"
+      DEBUG git log --oneline -1 "$TX_BRANCH_COMMIT"
+      DEBUG echo "forcing to tx commit:"
+      DEBUG git log --oneline -1 "$TX_COMMIT"
+     
       git branch --force tx-"$PROJECT_NAME" "$TX_COMMIT"
     fi
   fi
@@ -84,5 +90,13 @@ require_tx_branch() {
 
 advance_tx_branch() {
   PREVIOUS_TX=$1
+  DEBUG echo "advance tx branch to HEAD from $PREVIOUS_TX in $(pwd)"
   git update-ref refs/heads/tx-"$PROJECT_NAME" $( git rev-parse HEAD ) "$PREVIOUS_TX"
 }
+
+function DEBUG() {
+  if [ "$_DEBUG" == "on" ]; then
+    $@
+  fi
+}
+

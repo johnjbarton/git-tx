@@ -3,7 +3,6 @@
 # Copyright (c) 2010 Google Inc johnjbarton@google.com
 # Google BSD license http://code.google.com/google_bsd_license.html
 
-set -e 
 
 OPTIONS_SPEC="\
 git tx-push  <projectName>
@@ -96,19 +95,22 @@ fi
 #
 $(dirname $0)/git-tx-fetch "$PROJECT_NAME"
 
-require_tx_branch "$LOCAL_COMMIT"
-
+DEBUG echo "Merge tx-"$PROJECT_NAME" in to $( pwd ) with status:"
+DEBUG git status
 # bring that commit over
 #
 git merge tx-"$PROJECT_NAME"
 MERGE_RC=$?
 
+DEBUG echo "after merge our head is $( git log -1 --oneline HEAD )"
 
 if [ "$MERGE_RC" -eq 0 ]; then 
   # advance our marker and save it
   cd "$OTHER_PATH"
   OTHER_COMMIT=$( git rev-parse HEAD )
+  DEBUG echo "setting other_commit to $( git log -1 --oneline $OTHER_COMMIT )"
   cd "$LOCAL_GIT_DIR"
+  DEBUG echo "setting local_commit to $( git log -1 --oneline $LOCAL_COMMIT )"
 . $(dirname $0)/git-tx-setdown "$PROJECT_NAME"
  exit 0
 else
