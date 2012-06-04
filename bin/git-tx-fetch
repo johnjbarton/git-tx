@@ -3,7 +3,12 @@
 # Copyright (c) 2010 Google Inc johnjbarton@google.com
 # Google BSD license http://code.google.com/google_bsd_license.html
 
-set -e
+# Given: a local tree with .git-tx/<project> metadata directory
+#           LOCAL_COMMIT points to the one less than last pulled commit
+#           OTHER_COMMIT points to the other tree commit last pulled.
+# Result: local tree updates on tx-<project> branch with patch from other
+#           OTHER_COMMIT advances to HEAD on other tree
+#           LOCAL_COMMIT unchanged
 
 OPTIONS_SPEC="\
 git tx-push  <projectName>
@@ -71,6 +76,7 @@ if [ -z "$PROJECT_NAME" ]; then
 fi
 
 . $(dirname $0)/git-tx-setup 
+DEBUG echo "git-tx-fetch ++++++++++++++++++++++"
 setOtherPath
 
 if [ "$VERBOSE" =  yes ]; then
@@ -90,6 +96,7 @@ fi
 #
 CWD=$( pwd )
 cd "$OTHER_PATH"
+DEBUG echo "require clean tree in $( pwd )"
 require_clean_work_tree "tx-fetch"
 
 OTHER_GIT_DIR=$(git rev-parse --show-toplevel)
@@ -98,6 +105,7 @@ OTHER_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 
 # verify that the other tree has our commit
 #
+DEBUG echo "require tx branch in other tree $( pwd )"
 require_tx_branch "$OTHER_COMMIT"
 
 # diff within the transplant
@@ -105,15 +113,21 @@ require_tx_branch "$OTHER_COMMIT"
 TMP_GIT_TX_PATCH=/tmp/git-tx-$$.patch
 git diff --no-prefix "$OTHER_COMMIT"..HEAD "--" "$OTHER_PREFIX" > "$TMP_GIT_TX_PATCH"
 
+DEBUG echo "fetch created patch from $( git log -1 --oneline $OTHER_COMMIT )" 
+
 if [ -z "$(cat $TMP_GIT_TX_PATCH)" ]; then
   echo "Nothing to fetch, diff is empty"
-  exit 30
+  cd "$OTHER_GIT_DIR"
+  advance_tx_branch "$OTHER_COMMIT"
+  cd "$LOCAL_GIT_DIR"
+  exit 0
 fi
 
 cd "$LOCAL_GIT_DIR"
 cd "$LOCAL_PREFIX"
 
 LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
+DEBUG echo "require tx branch in $( pwd ) at $LOCAL_COMMIT"
 require_tx_branch "$LOCAL_COMMIT"
 
 git checkout tx-"$PROJECT_NAME"
@@ -122,10 +136,21 @@ git checkout tx-"$PROJECT_NAME"
 #
 patch < "$TMP_GIT_TX_PATCH"
 
+DEBUG echo "fetch applied patch at $( git log -1 --oneline HEAD )"
+
 # commit the changes
 git add -A
 git commit -m "Patch from $OTHER_GIT_URL $OTHER_PREFIX at $OTHER_COMMIT"
 
+DEBUG echo "Applied patch from $TMP_GIT_TX_PATCH in $( pwd ), status:"
+DEBUG git status
+DEBUG git log -1 --oneline HEAD
+
 git checkout -q "$LOCAL_BRANCH"
 
+cd "$OTHER_GIT_DIR"
+advance_tx_branch "$OTHER_COMMIT"
+cd "$LOCAL_GIT_DIR"
+
+DEBUG echo "git-tx-fetch --------------------"
 exit 0

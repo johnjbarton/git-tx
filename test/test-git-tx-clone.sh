@@ -124,6 +124,8 @@ fi
 
 checkBranches
 
+RESET_COMMIT=$( git rev-parse HEAD )
+
 echo ---------------- test git-tx-pull -----------------------
 cd /tmp/git-tx-right
 echo "this is a test on $( date )" >> test/pullme.txt
@@ -138,6 +140,7 @@ echo "test -------------------------------------------------->  tx-pull -x"
 git tx-pull -x git-tx
 
 echo "test -------------------------------------------------->  tx-pull "
+
 git tx-pull git-tx
 mustPass
 
@@ -165,6 +168,8 @@ echo "this is another test on $( date )" >> test/pullme.txt
 git add test/pullme.txt
 git commit -m "test git-tx-pull --other"
 cd /tmp/git-tx-left
+git reset --hard "$RESET_COMMIT"
+
 
 echo "test -------------------------------------------------->  tx-pull missing --other"
 
@@ -176,7 +181,7 @@ echo "test -------------------------------------------------->  tx-pull --other"
 git tx-pull --other /tmp/git-tx-other git-tx
 mustPass
 
-if [ $( diff /tmp/git-tx-left/git-tx/prefix/test/pullme.txt /tmp/git-tx-other/test/pullme.txt ) ]; then
+if [ "$( diff /tmp/git-tx-left/git-tx/prefix/test/pullme.txt /tmp/git-tx-other/test/pullme.txt )" ]; then
   echo ">>>>>>>>>>>>> FAIL:  git-tx-pull: files not identical"
   exit 16
 fi
