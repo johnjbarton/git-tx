@@ -72,6 +72,25 @@ clone 'a' and pass the new path to --other:
   cd /fun/b
   git pull --other /fun/a a
 
+How git-tx works:
+
+git-tx-clone --name <proj> --prefix <local_prefix> <other path>
+   creates a new branch on this tree called tx-pull-<proj>
+   creates a new branch on other tree called tx-pull-<proj> 
+   copies the <other path> directory from the 'other' tree to this <local_prefix>
+       in thistree.
+   records the source and target commits in this tree ./.git-tx/<proj>/
+
+git-tx-push <proj>
+   computes the diff between the current feature branch and tx-pull-<proj>, within
+     the transplanted subdirectory
+   creates a new branch on other tree called tx-<proj>-<feature> starting at 
+      tx-pull-<proj>
+   applies the patch to this new branch
+   dev is takes over to test, merge, and commit 
+   
+
+
 Note:
   The transplant tree must have no outstanding changes (commit or stash them). 
   Always use git tx-pull before git tx-push if the other tree has moved forward.
