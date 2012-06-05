@@ -15,11 +15,17 @@ fi
 if [ -z "$LOCAL_PREFIX" ]; then
  	LOCAL_PREFIX=$( cat "$META_TX_DIR"/local_prefix )
 fi
+if [ -z "$LOCAL_BRANCH" ]; then
+ 	LOCAL_BRANCH=$( cat "$META_TX_DIR"/local_branch )
+fi
 if [ -z "$OTHER_COMMIT" ]; then
 	OTHER_COMMIT=$( cat "$META_TX_DIR"/other_commit )
 fi
 if [ -z "$OTHER_PREFIX" ]; then 
 	OTHER_PREFIX=$( cat "$META_TX_DIR"/other_prefix )
+fi
+if [ -z "$OTHER_BRANCH" ]; then 
+	OTHER_BRANCH=$( cat "$META_TX_DIR"/other_branch )
 fi
 if [ -z "$OTHER_GIT_URL" ]; then
 	OTHER_GIT_URL=$( cat "$META_TX_DIR"/other_git_url )
@@ -71,19 +77,20 @@ require_tx_branch() {
     echo "The git repo at $( pwd ) does not contain the git-tx commit $TX_COMMIT"
     exit 28
   fi
-  TX_BRANCH_COMMIT=$( git rev-parse -q --verify tx-"$PROJECT_NAME" )
+  TX_BRANCH=tx-pull-"$PROJECT_NAME"
+  TX_BRANCH_COMMIT=$( git rev-parse -q --verify "$TX_BRANCH" )
   if [ $? -ne 0 ]; then  # the branch does not exist
-    DEBUG echo "The tx-$PROJECT_NAME branch does not exist"
-    git branch tx-"$PROJECT_NAME" "$TX_COMMIT"
+    DEBUG echo "The $TX_BRANCH branch does not exist"
+    git branch "$TX_BRANCH $TX_COMMIT"
   else
     if [ ! $( echo "$TX_BRANCH_COMMIT"  | grep "$TX_COMMIT") ]; then
       # the branch is misplaced
-      DEBUG echo "The tx-$PROJECT_NAME branch was misplaced, branch commit:"
+      DEBUG echo "The $TX_BRANCH branch was misplaced, branch commit:"
       DEBUG git log --oneline -1 "$TX_BRANCH_COMMIT"
       DEBUG echo "forcing to tx commit:"
       DEBUG git log --oneline -1 "$TX_COMMIT"
      
-      git branch --force tx-"$PROJECT_NAME" "$TX_COMMIT"
+      git branch --force "TX_BRANCH" "$TX_COMMIT"
     fi
   fi
 }

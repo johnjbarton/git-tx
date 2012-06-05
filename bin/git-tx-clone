@@ -92,12 +92,6 @@ LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 
 LOCAL_PATH=`pwd`
 DEFAULT_LOCAL_PREFIX=$( git rev-parse --show-prefix )
-
-# default to 'master'
-if [ -z "$OTHER_BRANCH" ]; then
-  OTHER_BRANCH="master"
-fi
-
 LOCAL_GIT_DIR=$(git rev-parse --show-toplevel)
 
 # go into the other tree and find its .git
@@ -113,6 +107,10 @@ if [ $(git rev-parse --show-toplevel) = "$LOCAL_GIT_DIR" ]; then
  die "Do not try to transplant from within one repo"
 fi
 
+# default to other current branch
+if [ -z "$OTHER_BRANCH" ]; then
+  OTHER_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
+fi
 OTHER_PREFIX=$( git rev-parse --show-prefix )
 OTHER_CDUP=$( git rev-parse --show-cdup )
 OTHER_GIT_URL=$( git config --get remote.origin.url ) || ( cd "$LOCAL_PATH"; die "Other git repo at $OTHER_PATH has no origin" )
@@ -127,7 +125,8 @@ if [ -z "$PROJECT_NAME" ]; then
   fi
 fi
 
-TX_BRANCH="tx.""$PROJECT_NAME"
+TX_BRANCH="tx-pull-""$PROJECT_NAME"
+
 if [ -z "$LOCAL_PREFIX" ]; then
   LOCAL_PREFIX="$DEFAULT_LOCAL_PREFIX""$PROJECT_NAME"/"$OTHER_PREFIX"
 fi
@@ -147,15 +146,15 @@ if [ "$EXPLAIN" =  yes ]; then
   exit 0
 fi
 
-OTHER_COMMIT="$( git rev-parse $OTHER_BRANCH )"
-
 # copy the other subtree into our local tree
 #
 ORIG_OTHER_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 git checkout "$OTHER_BRANCH"
 tar -c -C  "$OTHER_PREFIX" . | ( cd "$LOCAL_GIT_DIR" && mkdir -p "$DESTINATION" && cd "$DESTINATION" && tar xfp -)
 
-git branch --no-track  tx-"$PROJECT_NAME"
+OTHER_COMMIT="$( git rev-parse $OTHER_BRANCH )"
+git branch --no-track  "$TX_BRANCH"
+
 git checkout "$ORIG_OTHER_BRANCH"
 
 cd "$DESTINATION"
@@ -167,7 +166,7 @@ git add -A
 git commit -a -m "Transplant $OTHER_PREFIX from $OTHER_GIT_URL @ $OTHER_BRANCH to $LOCAL_PREFIX"
 
 LOCAL_COMMIT=$( git rev-parse HEAD )
-git branch --no-track tx-"$PROJECT_NAME"
+git branch --no-track "$TX_BRANCH"
 
 . $(dirname $0)/git-tx-setdown
  

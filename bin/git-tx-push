@@ -80,33 +80,38 @@ if [ "$VERBOSE_ONLY" = yes ]; then
   exit 0
 fi
 
+TX_BRANCH="tx-pull-$PROJECT_NAME"
+if [ -z "$( git branch --contains $OTHER_COMMIT | grep $TX_BRANCH)" ]; then
+  echo "The current branch does not contain the transplant commit"
+  exit 32
+fi
+
 # verify that the other tree is clean and we are up to date
 #
 CWD=$( pwd )
 cd $OTHER_PATH
 require_clean_work_tree "tx-push"
 
-OTHER_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
-
 require_tx_branch "$OTHER_COMMIT"
 
-OTHER_DIFF=$( git log --oneline "$OTHER_COMMIT"..HEAD )
+OTHER_DIFF=$( git log --oneline "$OTHER_COMMIT".."$TX_BRANCH" )
 if [ "$OTHER_DIFF" ]; then
   echo "$OTHER_DIFF"
   echo "Repo at $OTHER_PATH has ^these^ commits ahead of this transplant, git tx pull first"
   exit 14
 fi
 
-# as a result of the above checks, we know that branch tx_ points to head
+# as a result of the above checks, we know that branch tx-pull points to head
 
 OTHER_GIT_DIR=$(git rev-parse --show-toplevel)
 
 cd "$LOCAL_GIT_DIR"
+LOCAL_FEATURE_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 
 # create patch from this tree
 #
 TMP_GIT_TX_PATCH=/tmp/git-tx-$$.patch
-git diff --no-prefix "$LOCAL_COMMIT"..HEAD "--" "$LOCAL_PREFIX" > "$TMP_GIT_TX_PATCH"
+git diff --no-prefix "$LOCAL_COMMIT".."$LOCAL_FEATURE_BRANCH" "--" "$LOCAL_PREFIX" > "$TMP_GIT_TX_PATCH"
 
 if [ -z "$(cat $TMP_GIT_TX_PATCH)" ]; then
   echo "No changes in $LOCAL_PREFIX"
@@ -122,7 +127,9 @@ LOCAL_URL=$(git config --get remote.origin.url)
 #
 cd "$OTHER_PATH"
 
-git checkout tx-"$PROJECT_NAME"
+git checkout "$TX_BRANCH"
+FEATURE_BRANCH="tx-$PROJECT_NAME-$LOCAL_FEATURE_BRANCH"
+git checkout -b "$FEATURE_BRANCH"
 
 # patch while setting at the other path depth and using no prefix
  
@@ -132,15 +139,6 @@ patch < "$TMP_GIT_TX_PATCH"
 git add -A
 git commit --no-verify -q -m "Patch from $LOCAL_URL $LOCAL_PREFIX at $LOCAL_COMMIT"
 
-# move the marker up now that we have applied the patch
-#
-OTHER_COMMIT=$(git rev-parse HEAD)
-
-# Merge back to the branch we were on
-#
-git checkout "$OTHER_BRANCH"
-git merge tx-"$PROJECT_NAME"
-
 cd "$LOCAL_GIT_DIR"
 # TODO don't source this, pass args
 . $(dirname $0)/git-tx-setdown
@@ -149,6 +147,5 @@ cd "$LOCAL_GIT_DIR"
 #
 cd "$OTHER_GIT_DIR"
 
-echo "patch committed, test then 'git push' or 'git reset HEAD'"
-echo "current directory is $( pwd )"
+git status
 exit 0

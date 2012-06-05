@@ -101,7 +101,7 @@ require_clean_work_tree "tx-fetch"
 
 OTHER_GIT_DIR=$(git rev-parse --show-toplevel)
 cd "$OTHER_GIT_DIR"
-OTHER_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
+
 
 # verify that the other tree has our commit
 #
@@ -126,7 +126,7 @@ fi
 cd "$LOCAL_GIT_DIR"
 cd "$LOCAL_PREFIX"
 
-LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
+CURRENT_LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 DEBUG echo "require tx branch in $( pwd ) at $LOCAL_COMMIT"
 require_tx_branch "$LOCAL_COMMIT"
 
@@ -146,7 +146,7 @@ DEBUG echo "Applied patch from $TMP_GIT_TX_PATCH in $( pwd ), status:"
 DEBUG git status
 DEBUG git log -1 --oneline HEAD
 
-git checkout -q "$LOCAL_BRANCH"
+git checkout -q "$CURRENT_LOCAL_BRANCH"
 
 cd "$OTHER_GIT_DIR"
 advance_tx_branch "$OTHER_COMMIT"

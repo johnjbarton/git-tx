@@ -78,17 +78,207 @@ git-tx-clone --name <proj> --prefix <local_prefix> <other path>
    creates a new branch on this tree called tx-pull-<proj>
    creates a new branch on other tree called tx-pull-<proj> 
    copies the <other path> directory from the 'other' tree to this <local_prefix>
-       in thistree.
+       in this tree.
    records the source and target commits in this tree ./.git-tx/<proj>/
 
-git-tx-push <proj>
-   computes the diff between the current feature branch and tx-pull-<proj>, within
-     the transplanted subdirectory
-   creates a new branch on other tree called tx-<proj>-<feature> starting at 
-      tx-pull-<proj>
-   applies the patch to this new branch
-   dev is takes over to test, merge, and commit 
+The other tree looks like: 
+
+   other_commit
+   |
+   \/
+   A  Other_branch
+   ^
+   | 
+   tx-pull-<proj>
    
+The local tree looks like:
+
+   local_commit
+   |
+   \/
+   Z <---M  Local_branch
+   ^                    
+   |               
+   tx-pull-<proj>
+
+Where M is the meta-data commit
+
+git-tx-pull <proj>
+   
+After git-tx-clone, Other_branch may grow with new commits B,C,D:
+
+   other_commit
+   |
+   \/
+   A <--- B <---- C <----D Other_branch
+   ^
+   | 
+   tx-pull-<proj>
+
+Local_branch may grow with Y, X, W, and a feature branch to V
+
+   local_commit
+   |
+   \/
+   Z <--- M <---- X <----W Local_branch  
+   ^              \      
+   |               \
+   tx-pull-<proj>   -V feature_branch
+   
+The git-tx-pull rebases the tx-pull-<proj> branch on the other tree:
+
+   other_commit
+   |
+   \/
+   A <--- B <---- C <----D Other_branch
+                         ^
+                         | 
+                         tx-pull-<proj>
+
+then computes the diff within the subdirectory between the other commit and 
+HEAD, and applies the patch to local:
+
+   local_commit
+   |
+   \/
+   Z <--- M <---- X <----W Local_branch        
+   |               \
+   \                \
+    D'               -V feature_branch
+    ^
+    |
+    tx-pull-<proj>  
+
+This much is done by git-tx-fetch. git-tx-pull then merges the result back 
+into local branch:
+
+   local_commit
+   |
+   \/
+   Z <--- M <---- X <----W <---- D" Local_branch        
+                   \             ^
+                    \            tx-pull-<proj>
+                     -V feature_branch
+     
+and finally the commit markers on both trees are move forward.
+
+                                 local_commit
+                                 |
+                                 \/
+    Z <---M <---- X <----W <---- D" <---- N Local_branch        
+                   \             ^
+                    \            tx-pull-<proj>
+                     -V feature_branch
+
+Here N is the new meta-data commit.
+
+The developer must rebase or merge the feature branch to obtain
+the updates as normal.
+
+git-tx-push
+  
+Before tx-push will start, the tx-pull-<proj> branch must be at head:
+
+                         other_commit
+                         |
+                         \/
+   A <--- B <---- C <----D Other_branch
+                         ^
+                         | 
+                         tx-pull-<proj>
+
+Similarly the local copy must be up to date, meaning that the 
+current branch on local to be pushed must be ahead of local_commit.
+
+                                local_commit
+                                |
+                                \/
+   Z <--- M <---- X <----W <---- D" <----N Local_branch        
+                                 ^\
+                                 | \
+                                 |  V' <----U feature
+                                 tx-pull-<proj>
+                     
+When we use git-tx-push on the feature branch, we compute the diff
+within the subdirectory between the tx-pull-<proj> and feature,
+and apply it to a new branch on the other tree:
+
+                         other_commit
+                         |
+                         \/
+   A <--- B <---- C <----D  Other_branch
+                         ^\
+                         | \---U'  tx-<proj>-feature
+                         | 
+                         tx-pull-<proj>
+
+At this point the developer can test, merge with the other branch, or 
+other actions.  If the local feature branch advances:
+
+                                local_commit
+                                |
+                                \/
+   Z <--- Y <---- X <----W <---- D" <----N Local_branch        
+                                 ^\
+                                 | \
+                                 |  V' <----U <----S feature
+                                 tx-pull-<proj>
+
+a second tx-push will extend the branch in the other tree:
+
+                         other_commit
+                         |
+                         \/
+   A <--- B <---- C <----D  Other_branch
+                         ^\
+                         | \---U' <----S'  tx-<proj>-feature
+                         | 
+                         tx-pull-<proj>
+
+For this reason the diffs we use are really "copy over changed
+files and let git compute diffs on commit".
+
+git-tx-pull redux
+
+Now that we have used tx-push, consider a tx-pull:
+
+                         other_commit
+                         |
+                         \/
+   A <--- B <---- C <----D <---- E  Other_branch
+                         ^\
+                         | \---U' <----S'  tx-<proj>-feature
+                         | 
+                         tx-pull-<proj>
+
+The tx-pull will rebase the base tx-pull-proj branch and
+any feature branches:
+
+
+                                 other_commit
+                                 |
+                                 \/
+   A <--- B <---- C <----D <---- E  Other_branch
+                                 ^\
+                                 | \---U' <----S'  tx-<proj>-feature
+                                 | 
+                                 tx-pull-<proj>
+
+The patch applied to the local tree:
+
+                                                local_commit
+                                                |
+                                                \/
+   Z <--- Y <---- X <----W <---- D" <----N <--- E" Local_branch        
+                                  \             ^
+                                   \            |
+                                    \           tx-pull-<proj>
+                                     \
+                                      V' <----U <----S feature
+                                 
+will leave the feature branch out of sync with the other tree. The
+developer is advised to merge or rebase the feature branch to the
+local_branch.
 
 
 Note:

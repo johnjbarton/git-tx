@@ -11,6 +11,8 @@ META_TX_DIR="$LOCAL_GIT_DIR"/.git-tx/"$PROJECT_NAME"
 mkdir -p "$META_TX_DIR"
 echo "$LOCAL_COMMIT"  > "$META_TX_DIR"/local_commit 
 echo "$OTHER_COMMIT"  > "$META_TX_DIR"/other_commit
+echo "$LOCAL_BRANCH"  > "$META_TX_DIR"/local_branch
+echo "$OTHER_BRANCH"  > "$META_TX_DIR"/other_branch
 echo "$LOCAL_PREFIX"  > "$META_TX_DIR"/local_prefix 
 echo "$OTHER_PREFIX"  > "$META_TX_DIR"/other_prefix 
 echo "$OTHER_GIT_URL" > "$META_TX_DIR"/other_git_url 

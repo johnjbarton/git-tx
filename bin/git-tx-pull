@@ -91,15 +91,17 @@ if [ "$VERBOSE_ONLY" = yes ]; then
   exit 0
 fi
 
-# Create a commit on branch tx-<project_name> from the change on the other tree 
+TX_BRANCH="tx-pull-$PROJECT_NAME"
+
+# Create a commit on branch $TX_BRANCH from the change on the other tree 
 #
 $(dirname $0)/git-tx-fetch "$PROJECT_NAME"
 
-DEBUG echo "Merge tx-"$PROJECT_NAME" in to $( pwd ) with status:"
+DEBUG echo "Merge $TX_BRANCH in to $( pwd ) with status:"
 DEBUG git status
 # bring that commit over
 #
-git merge tx-"$PROJECT_NAME"
+git merge $TX_BRANCH
 MERGE_RC=$?
 
 DEBUG echo "after merge our head is $( git log -1 --oneline HEAD )"
@@ -114,7 +116,7 @@ if [ "$MERGE_RC" -eq 0 ]; then
 . $(dirname $0)/git-tx-setdown "$PROJECT_NAME"
  exit 0
 else
-  echo "Complete the merge with branch tx-$PROJECT_NAME manually"
+  echo "Complete the merge with branch $TX_BRANCH manually"
   exit 1
 fi
 exit 0
