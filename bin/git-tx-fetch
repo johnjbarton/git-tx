@@ -126,11 +126,12 @@ fi
 cd "$LOCAL_GIT_DIR"
 cd "$LOCAL_PREFIX"
 
+TX_BRANCH="tx-pull-$PROJECT_NAME"
 CURRENT_LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 DEBUG echo "require tx branch in $( pwd ) at $LOCAL_COMMIT"
 require_tx_branch "$LOCAL_COMMIT"
 
-git checkout tx-"$PROJECT_NAME"
+git checkout "$TX_BRANCH" 
 
 # patch this tree with changes from the other one, while at the prefix depth
 #

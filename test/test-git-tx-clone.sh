@@ -116,13 +116,6 @@ if [ "$( diff /tmp/git-tx-left/"$TX_PUSH_TEST" /tmp/git-tx-right/test/pushme.txt
   exit 15
 fi
 
-OTHER_HEAD_SHA=$(cd /tmp/git-tx-right && git rev-parse HEAD && cd /tmp/git-tx-left)
-if [ "$OTHER_HEAD_SHA" != $( cat /tmp/git-tx-left/.git-tx/git-tx/other_commit ) ]; then
-  echo ">>>>>>>>>>>>> FAIL:  git-tx-push: other commit fails to record other head"
-  exit 17
-fi
-
-checkBranches
 
 RESET_COMMIT=$( git rev-parse HEAD )
 
@@ -158,6 +151,12 @@ EXTRA_FILES="$(find /tmp/git-tx-left/ -name pullme.txt | wc -l)"
 if [ "$EXTRA_FILES" -ne "1" ]; then
   echo ">>>>>>>>>>>>> FAIL:24, $EXTRA_FILES extra files"
   find /tmp/git-tx-left/ -name pullme.txt
+fi
+
+OTHER_HEAD_SHA=$(cd /tmp/git-tx-right && git rev-parse HEAD && cd /tmp/git-tx-left)
+if [ "$OTHER_HEAD_SHA" != $( cat /tmp/git-tx-left/.git-tx/git-tx/other_commit ) ]; then
+  echo ">>>>>>>>>>>>> FAIL:  git-tx-push: other commit fails to record other head"
+  exit 17
 fi
 
 checkBranches

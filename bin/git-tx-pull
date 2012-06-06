@@ -3,7 +3,6 @@
 # Copyright (c) 2010 Google Inc johnjbarton@google.com
 # Google BSD license http://code.google.com/google_bsd_license.html
 
-
 OPTIONS_SPEC="\
 git tx-push  <projectName>
 
