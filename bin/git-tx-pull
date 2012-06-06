@@ -94,6 +94,7 @@ if [ "$VERBOSE_ONLY" = yes ]; then
 fi
 # Create a commit on branch $TX_BRANCH from the change on the other tree 
 #
+require_tx_branch "$OTHER_COMMIT"
 PREFETCH_HEAD=$( git rev-parse "$TX_BRANCH" )
 $(dirname $0)/git-tx-fetch "$PROJECT_NAME" 
 

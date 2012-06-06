@@ -138,7 +138,7 @@ cd "$LOCAL_PREFIX"
 
 CURRENT_LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 
-DEBUG echo "require tx branch in $( pwd ) at $( git log -1 --oneline $LOCAL_COMMIT )"
+DEBUG echo "require tx branch in $( pwd ) at $( git log --no-pager -1 --oneline $LOCAL_COMMIT )"
 require_tx_branch "$LOCAL_COMMIT"
 
 git checkout "$TX_BRANCH" 
@@ -158,9 +158,9 @@ DEBUG echo "fetch applying patch at $( git log -1 --oneline HEAD )"
 git add -A
 git commit -m "tx-pull from $OTHER_GIT_URL $OTHER_PREFIX at $OTHER_COMMIT"
 
-DEBUG echo "Applied patch from $CHANGED_TAR in $( pwd ), status:"
+DEBUG echo "fetch applied patch from $CHANGED_TAR in $( pwd ), status:"
 DEBUG git status
-DEBUG git log -1 --oneline HEAD
+DEBUG git log --no-pager -1 --oneline HEAD
 
 git checkout -q "$CURRENT_LOCAL_BRANCH"
 
