@@ -78,6 +78,7 @@ fi
 . $(dirname $0)/git-tx-setup 
 setOtherPath
 
+DEBUG="on"
 
 if [ "$VERBOSE" =  yes ]; then
   echo "git tx pull to local directory $LOCAL_PREFIX"
@@ -91,10 +92,15 @@ fi
 if [ "$VERBOSE_ONLY" = yes ]; then
   exit 0
 fi
-
 # Create a commit on branch $TX_BRANCH from the change on the other tree 
 #
-$(dirname $0)/git-tx-fetch "$PROJECT_NAME"
+PREFETCH_HEAD=$( git rev-parse "$TX_BRANCH" )
+$(dirname $0)/git-tx-fetch "$PROJECT_NAME" 
+
+if [ "$PREFETCH_HEAD" == "$( git rev-parse $TX_BRANCH )" ]; then
+  echo "$PROJECT_NAME Already up to date"
+  exit $?
+fi
 
 DEBUG echo "Merge $TX_BRANCH in to $( pwd ) with status:"
 DEBUG git status

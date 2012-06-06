@@ -5,8 +5,6 @@
 
 # source this file into git-tx shell scripts
 
-export _DEBUG="on"
-
 LOCAL_GIT_DIR=$(git rev-parse --show-toplevel)
 META_TX_DIR="$LOCAL_GIT_DIR"/.git-tx/"$PROJECT_NAME"
 
@@ -34,9 +32,18 @@ if [ -z "$OTHER_GIT_URL" ]; then
 	OTHER_GIT_URL=$( cat "$META_TX_DIR"/other_git_url )
 fi
 
+checkOtherPath() {
+    if [ ! -d "$OTHER_PATH" ]; then 
+      echo "No directory at stored value of other path: $OTHER_PATH"
+      echo "Use --other to reset"
+      exit 21
+    fi
+}
+
 setOtherPath() {
   export OTHER_PATH
   if [ $OTHER_PATH ]; then
+    checkOtherPath
     return
   fi
 
@@ -44,16 +51,10 @@ setOtherPath() {
 
   if [ -r "$OTHER_PATH_FILE" ]; then
     OTHER_PATH=$( cat "$OTHER_PATH_FILE" )
-    if [ ! -d "$OTHER_PATH" ]; then 
-      echo "No directory at stored value of other path: $OTHER_PATH"
-      echo "Use --other to reset"
-      exit 21
-    fi
+    checkOtherPath
+    return
   fi
 
-# We have a stored path, check its value.
-
-  if [ ! -d "$OTHER_PATH" ]; then
     OTHER_PATH=/tmp/git-tx-"$PROJECT_NAME"-repo-$$
     echo "Need --other <for $OTHER_PREFIX> or local copy of transplanted git repo,"
     echo "git clone $OTHER_GIT_URL $OTHER_PATH [Y/n]? \c"
@@ -63,7 +64,6 @@ setOtherPath() {
     else
       exit 26
     fi
-  fi
 
 }
 
@@ -83,8 +83,13 @@ require_tx_branch() {
   TX_BRANCH=tx-pull-"$PROJECT_NAME"
   TX_BRANCH_COMMIT=$( git rev-parse -q --verify "$TX_BRANCH" )
   if [ $? -ne 0 ]; then  # the branch does not exist
-    DEBUG echo "The $TX_BRANCH branch does not exist"
-    git branch "$TX_BRANCH $TX_COMMIT"
+    echo "The $TX_BRANCH branch does not exist"
+    git rev-parse --verify -q "$TX_COMMIT"
+    if [ $? -ne 0 ]; then 
+      echo "The tree at $( pwd ) is not consistent with git-tx: is it up to date?"
+      exit 36
+    fi
+    git branch "$TX_BRANCH" "$TX_COMMIT"
   else
     if [ ! $( echo "$TX_BRANCH_COMMIT"  | grep "$TX_COMMIT") ]; then
       # the branch is misplaced
@@ -93,7 +98,7 @@ require_tx_branch() {
       DEBUG echo "forcing to tx commit:"
       DEBUG git log --oneline -1 "$TX_COMMIT"
      
-      git branch --force "TX_BRANCH" "$TX_COMMIT"
+      git branch --force "$TX_BRANCH" "$TX_COMMIT"
     fi
   fi
 }
@@ -101,12 +106,12 @@ require_tx_branch() {
 advance_tx_branch() {
   PREVIOUS_TX=$1
   DEBUG echo "advance tx branch to HEAD from $PREVIOUS_TX in $(pwd)"
-  git update-ref refs/heads/"$TX_BRANCH" $( git rev-parse HEAD ) "$PREVIOUS_TX"
+  git update-ref refs/heads/"$TX_BRANCH" $( git rev-parse HEAD ) 
 }
 
 function DEBUG() {
-  if [ "$_DEBUG" == "on" ]; then
+#  if [ "$_DEBUG" == "on" ]; then
     $@
-  fi
+#  fi
 }
 

@@ -26,4 +26,7 @@ mkdir -p "$OTHER_PATH_DIR"
 echo "$OTHER_PATH" > "$OTHER_PATH_DIR"/"$PROJECT_NAME"
 
 git add "$LOCAL_GIT_DIR"/.git-tx
-git commit -m "git transplant metadata update $1" 
+git commit -m "git transplant metadata update $1"
+
+echo "git-tx meta committed to repository at $( pwd )"
+exit 0 

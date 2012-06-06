@@ -115,20 +115,22 @@ git rebase $OTHER_BRANCH
 
 # diff within the transplant
 #
-TMP_GIT_TX_PATCH=/tmp/git-tx-$$.patch
-git diff --no-prefix "$OTHER_COMMIT".."$OTHER_BRANCH" "--" "$OTHER_PREFIX" > "$TMP_GIT_TX_PATCH"
+CHANGED_TAR=/tmp/git-tx-$$.tar
+git diff --name-only --no-prefix "$OTHER_COMMIT".."$OTHER_BRANCH" "--" "$OTHER_PREFIX" | xargs tar -cf "$CHANGED_TAR"
 
-DEBUG echo "fetch created patch from $( git log -1 --oneline $OTHER_COMMIT )" 
+DEBUG echo "fetch file list from $( git log -1 --oneline $OTHER_COMMIT ):"
 
 git checkout -q "$CURRENT_OTHER_BRANCH"
 
-if [ -z "$(cat $TMP_GIT_TX_PATCH)" ]; then
+if [ ! -r "$CHANGED_TAR" ]; then
   echo "Nothing to fetch, diff is empty"
   cd "$OTHER_GIT_DIR"
   advance_tx_branch "$OTHER_COMMIT"
   cd "$LOCAL_GIT_DIR"
   exit 0
 fi
+
+DEBUG tar -tvf "$CHANGED_TAR" 
 
 # -------------------- LOCAL ---------------
 cd "$LOCAL_GIT_DIR"
@@ -143,15 +145,20 @@ git checkout "$TX_BRANCH"
 
 # patch this tree with changes from the other one, while at the prefix depth
 #
-patch < "$TMP_GIT_TX_PATCH"
 
-DEBUG echo "fetch applied patch at $( git log -1 --oneline HEAD )"
+DEBUG echo "Copying changed files to $( pwd )"
+mkdir -p /tmp/$$
+tar -C /tmp/$$ -xvf "$CHANGED_TAR"
+mv /tmp/$$/"$OTHER_PREFIX"* .
+
+DEBUG git status
+DEBUG echo "fetch applying patch at $( git log -1 --oneline HEAD )"
 
 # commit the changes
 git add -A
 git commit -m "tx-pull from $OTHER_GIT_URL $OTHER_PREFIX at $OTHER_COMMIT"
 
-DEBUG echo "Applied patch from $TMP_GIT_TX_PATCH in $( pwd ), status:"
+DEBUG echo "Applied patch from $CHANGED_TAR in $( pwd ), status:"
 DEBUG git status
 DEBUG git log -1 --oneline HEAD
 

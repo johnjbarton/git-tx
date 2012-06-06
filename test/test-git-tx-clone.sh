@@ -12,7 +12,6 @@ mustFail() {
     echo ">> MUST FAIL $RC <<"
     exit $RC
   fi
-  beClean
 }
 mustPass() {
   RC=$?
@@ -21,13 +20,6 @@ mustPass() {
   else
     echo ">> FAIL: $RC <<"
     exit $RC
-  fi
-  beClean
-}
-beClean() {
-  if [ `pwd` != "/tmp/git-tx-left" ]; then
-    echo ">>>>>>>>>>>>> FAIL:  Did not return to /tmp/git-tx-left, still in `pwd` "
-    exit 13
   fi
 }
 checkBranches() {
@@ -98,7 +90,29 @@ if [ -z "$( cat /tmp/git-tx-left/.git-tx/git-tx/local_prefix)" ]; then
   exit 19
 fi
 
-echo ---------------- test git-tx-push -x -----------------------
+mv /tmp/git-tx-right /tmp/git-tx-save
+rm -r -f /tmp/git-tx-other
+cd /tmp
+git clone git@github.com:johnjbarton/git-tx.git git-tx-other
+cd /tmp/git-tx-left
+
+echo "test -------------------------------------------------->  tx-pull missing --other"
+
+git tx-pull git-tx
+mustFail
+
+echo "test -------------------------------------------------->  tx-pull --other"
+cd /tmp/git-tx-left
+git checkout master
+git tx-pull --other /tmp/git-tx-other git-tx
+mustPass
+
+mv /tmp/git-tx-save /tmp/git-tx-right
+git tx-pull --other /tmp/git-tx-right git-tx
+mustPass
+
+checkBranches
+echo "test --------------------------------------------------> git-tx-push -x "
 TX_PUSH_TEST="git-tx/prefix/test/pushme.txt"
 echo "this is a test on $( date )" >> "$TX_PUSH_TEST"
 git add "$TX_PUSH_TEST"
@@ -107,20 +121,22 @@ git commit -m "test git-tx-push"
 git tx-push -x git-tx
 mustPass
 
-echo ---------------- test git-tx-push -----------------------
+echo "test --------------------------------------------------> git-tx-push "
 git tx-push git-tx
+echo "tx-push ends in $( pwd )"
 mustPass
 
-if [ -z "$( echo `pwd` | grep /tmp/git-tx-right)" ]; then
-  echo "tx-push ended in $( pwd )"
-  exit 33
+if [ ! -r /tmp/git-tx-right/test/pushme.txt ]; then
+  echo "git-tx-push failed to create pushme.txt"
+  exit 35
 fi
 
 echo "Simulate developer merge"
 cd /tmp/git-tx-right
 git reset master
 git checkout master
-git commit -a -m "simulate developer reset and re-commit from tx-push "
+git add -A
+git commit -m "simulate developer reset and re-commit from tx-push "
 
 if [ "$( diff /tmp/git-tx-left/"$TX_PUSH_TEST" /tmp/git-tx-right/test/pushme.txt )" ]; then
   echo ">>>>>>>>>>>>> FAIL:  git-tx-push: files not identical"
@@ -129,29 +145,21 @@ fi
 
 checkBranches
 
-
-RESET_COMMIT=$( git rev-parse HEAD )
-
-echo ---------------- test git-tx-pull -----------------------
+echo "test -------------------------------------------------->  tx-pull -x"
 cd /tmp/git-tx-right
 echo "this is a test on $( date )" >> test/pullme.txt
 git add test/pullme.txt
 git commit -m "test git-tx-pull"
 cd /tmp/git-tx-left
 
-rm -r -f /tmp/git-tx-other
-cp -r /tmp/git-tx-right /tmp/git-tx-other
-
-echo "test -------------------------------------------------->  tx-pull -x"
 git tx-pull -x git-tx
 
 echo "test -------------------------------------------------->  tx-pull "
-set -x -v
 git tx-pull git-tx
 mustPass
 
 if [ ! -e /tmp/git-tx-left/git-tx/prefix/test/pullme.txt ]; then
-  echo ">>>>>>>>>>>>> FAIL:  23 no /tmp/git-tx-left/test/pullme.txt"
+  echo ">>>>>>>>>>>>> FAIL:  23 no /tmp/git-tx-left/git-tx/prefix/test/pullme.txt"
   exit 23
 fi
 
@@ -174,31 +182,6 @@ fi
 
 checkBranches
 
-rm -r -f /tmp/git-tx-right
-cd /tmp/git-tx-other
-echo "this is another test on $( date )" >> test/pullme.txt
-git add test/pullme.txt
-git commit -m "test git-tx-pull --other"
-cd /tmp/git-tx-left
-git reset --hard "$RESET_COMMIT"
-
-
-echo "test -------------------------------------------------->  tx-pull missing --other"
-
-git tx-pull git-tx
-mustFail
-
-echo "test -------------------------------------------------->  tx-pull --other"
-
-git tx-pull --other /tmp/git-tx-other git-tx
-mustPass
-
-if [ "$( diff /tmp/git-tx-left/git-tx/prefix/test/pullme.txt /tmp/git-tx-other/test/pullme.txt )" ]; then
-  echo ">>>>>>>>>>>>> FAIL:  git-tx-pull: files not identical"
-  exit 16
-fi
-mv /tmp/git-tx-other /tmp/git-tx-right
-checkBranches
 
 echo ---------------- test git-tx-rm -----------------------
 

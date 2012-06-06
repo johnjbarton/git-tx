@@ -3,7 +3,7 @@
 # Copyright (c) 2010 Google Inc johnjbarton@google.com
 # Google BSD license http://code.google.com/google_bsd_license.html
 
-set -e
+set -e 
 
 OPTIONS_SPEC="\
 git tx-push  <projectName>
@@ -111,10 +111,10 @@ LOCAL_FEATURE_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 
 # create patch from this tree
 #
-TMP_GIT_TX_PATCH=/tmp/git-tx-$$.patch
-git diff --no-prefix "$LOCAL_COMMIT".."$LOCAL_FEATURE_BRANCH" "--" "$LOCAL_PREFIX" > "$TMP_GIT_TX_PATCH"
+CHANGED_TAR=/tmp/git-tx-$$.tar
+git diff --no-prefix --name-only "$LOCAL_COMMIT".."$LOCAL_FEATURE_BRANCH" "--" "$LOCAL_PREFIX" | xargs tar -cf "$CHANGED_TAR"
 
-if [ -z "$(cat $TMP_GIT_TX_PATCH)" ]; then
+if [ -z "$(cat $CHANGED_TAR)" ]; then
   echo "No changes in $LOCAL_PREFIX"
   exit 0
 fi
@@ -128,14 +128,17 @@ LOCAL_URL=$(git config --get remote.origin.url)
 # patch the other tree, 
 #
 cd "$OTHER_PATH"
-
 git checkout "$TX_BRANCH"
 FEATURE_BRANCH="tx-$PROJECT_NAME-$LOCAL_FEATURE_BRANCH"
-git checkout -b "$FEATURE_BRANCH"
+git checkout -f -b "$FEATURE_BRANCH"
 
 # patch while setting at the other path depth and using no prefix
  
-patch < "$TMP_GIT_TX_PATCH"
+DEBUG echo "Copying changed files to $( pwd )"
+mkdir -p /tmp/$$
+tar -C /tmp/$$ -xvf "$CHANGED_TAR"
+mv /tmp/$$/"$LOCAL_PREFIX/"* .
+
 
 # commit the changes
 git add -A
@@ -146,9 +149,5 @@ cd "$LOCAL_GIT_DIR"
 # TODO don't source this, pass args
 . $(dirname $0)/git-tx-setdown "tx-push $PROJECT_NAME"
 
-# end on the other tree, ready for test/push
-#
-cd "$OTHER_GIT_DIR"
-
-git status
+echo "Patch applied on branch $FEATURE_BRANCH in $( pwd )"  
 exit 0
