@@ -5,9 +5,12 @@
 
 # source this file into git-tx shell scripts
 
+export _DEBUG="on"
 
 LOCAL_GIT_DIR=$(git rev-parse --show-toplevel)
 META_TX_DIR="$LOCAL_GIT_DIR"/.git-tx/"$PROJECT_NAME"
+
+export TX_BRANCH="tx-pull-$PROJECT_NAME"
 
 if [ -z "$LOCAL_COMMIT" ]; then
 	LOCAL_COMMIT=$( cat "$META_TX_DIR"/local_commit )
@@ -98,7 +101,7 @@ require_tx_branch() {
 advance_tx_branch() {
   PREVIOUS_TX=$1
   DEBUG echo "advance tx branch to HEAD from $PREVIOUS_TX in $(pwd)"
-  git update-ref refs/heads/tx-"$PROJECT_NAME" $( git rev-parse HEAD ) "$PREVIOUS_TX"
+  git update-ref refs/heads/"$TX_BRANCH" $( git rev-parse HEAD ) "$PREVIOUS_TX"
 }
 
 function DEBUG() {

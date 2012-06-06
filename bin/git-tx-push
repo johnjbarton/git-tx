@@ -3,7 +3,7 @@
 # Copyright (c) 2010 Google Inc johnjbarton@google.com
 # Google BSD license http://code.google.com/google_bsd_license.html
 
-
+set -e
 
 OPTIONS_SPEC="\
 git tx-push  <projectName>
@@ -80,12 +80,12 @@ if [ "$VERBOSE_ONLY" = yes ]; then
   exit 0
 fi
 
-TX_BRANCH="tx-pull-$PROJECT_NAME"
 if [ -z "$( git branch --contains $OTHER_COMMIT | grep $TX_BRANCH)" ]; then
   echo "The current branch does not contain the transplant commit"
   exit 32
 fi
 
+# ----------------- Other ------------------
 # verify that the other tree is clean and we are up to date
 #
 CWD=$( pwd )
@@ -105,6 +105,7 @@ fi
 
 OTHER_GIT_DIR=$(git rev-parse --show-toplevel)
 
+#------------------ Local -------------------
 cd "$LOCAL_GIT_DIR"
 LOCAL_FEATURE_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 
@@ -123,6 +124,7 @@ fi
 LOCAL_COMMIT=$(git rev-parse HEAD)
 LOCAL_URL=$(git config --get remote.origin.url)
 
+# ------------------ Other ------------------
 # patch the other tree, 
 #
 cd "$OTHER_PATH"
@@ -139,9 +141,10 @@ patch < "$TMP_GIT_TX_PATCH"
 git add -A
 git commit --no-verify -q -m "Patch from $LOCAL_URL $LOCAL_PREFIX at $LOCAL_COMMIT"
 
+# ------------------- Local -----------------
 cd "$LOCAL_GIT_DIR"
 # TODO don't source this, pass args
-. $(dirname $0)/git-tx-setdown
+. $(dirname $0)/git-tx-setdown "tx-push $PROJECT_NAME"
 
 # end on the other tree, ready for test/push
 #

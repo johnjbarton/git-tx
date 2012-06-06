@@ -33,13 +33,13 @@ beClean() {
 checkBranches() {
   LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
   if [ "$LOCAL_BRANCH" != "master" ]; then 
-    echo ">>>>>>>>>>>>> FAIL:  Local not on master $LOCAL_BRANCH"
+    echo ">>>>>>>>>>>>> FAIL:  Local not on master, on $LOCAL_BRANCH"
     exit 22
   fi
   cd /tmp/git-tx-right
   OTHER_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
   if [ "$OTHER_BRANCH" != "master" ]; then 
-    echo ">>>>>>>>>>>>> FAIL:  Other not on master $OTHER_BRANCH"
+    echo ">>>>>>>>>>>>> FAIL:  Other not on master, on $OTHER_BRANCH"
     exit 23
   fi
   cd /tmp/git-tx-left
@@ -98,12 +98,12 @@ if [ -z "$( cat /tmp/git-tx-left/.git-tx/git-tx/local_prefix)" ]; then
   exit 19
 fi
 
+echo ---------------- test git-tx-push -x -----------------------
 TX_PUSH_TEST="git-tx/prefix/test/pushme.txt"
 echo "this is a test on $( date )" >> "$TX_PUSH_TEST"
 git add "$TX_PUSH_TEST"
 git commit -m "test git-tx-push"
 
-echo ---------------- test git-tx-push -x -----------------------
 git tx-push -x git-tx
 mustPass
 
@@ -111,10 +111,23 @@ echo ---------------- test git-tx-push -----------------------
 git tx-push git-tx
 mustPass
 
+if [ -z "$( echo `pwd` | grep /tmp/git-tx-right)" ]; then
+  echo "tx-push ended in $( pwd )"
+  exit 33
+fi
+
+echo "Simulate developer merge"
+cd /tmp/git-tx-right
+git reset master
+git checkout master
+git commit -a -m "simulate developer reset and re-commit from tx-push "
+
 if [ "$( diff /tmp/git-tx-left/"$TX_PUSH_TEST" /tmp/git-tx-right/test/pushme.txt )" ]; then
   echo ">>>>>>>>>>>>> FAIL:  git-tx-push: files not identical"
   exit 15
 fi
+
+checkBranches
 
 
 RESET_COMMIT=$( git rev-parse HEAD )
@@ -133,7 +146,7 @@ echo "test -------------------------------------------------->  tx-pull -x"
 git tx-pull -x git-tx
 
 echo "test -------------------------------------------------->  tx-pull "
-
+set -x -v
 git tx-pull git-tx
 mustPass
 

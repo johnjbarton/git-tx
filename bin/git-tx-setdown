@@ -5,6 +5,8 @@
 
 # source this file into git-tx shell scripts
 
+# usage . git-tx-setdown <commit-msg>
+
 # record meta data for this transplant
 #
 META_TX_DIR="$LOCAL_GIT_DIR"/.git-tx/"$PROJECT_NAME"
@@ -24,4 +26,4 @@ mkdir -p "$OTHER_PATH_DIR"
 echo "$OTHER_PATH" > "$OTHER_PATH_DIR"/"$PROJECT_NAME"
 
 git add "$LOCAL_GIT_DIR"/.git-tx
-git commit -m "git transplant metadata update" 
+git commit -m "git transplant metadata update $1" 
