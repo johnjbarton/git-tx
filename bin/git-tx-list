@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# Copyright (c) 2010 Google Inc johnjbarton@google.com
+# Google BSD license http://code.google.com/google_bsd_license.html
+
+
+#set -e 
+
+OPTIONS_SPEC="\
+git tx-list
+
+print git-tx configuration info 
+--
+n,name=              override default name for transplant branch
+"
+
+die() {
+  echo >&2 "$@"
+  exit 1
+}
+
+usage() {
+  exec "$0" -h
+}
+
+SUBDIRECTORY_OK='yes'
+. $(dirname $0)/git-sh-setup.sh
+
+
+
+eval "$(echo "$OPTIONS_SPEC" | git rev-parse --parseopt -- "$@" || echo exit $?)"
+
+PROJECT_NAME=
+. $(dirname $0)/git-tx-setclear
+
+while [ "$#" -ne 0 ]; do
+  case "$1" in 
+  -n|--name)
+      shift
+    PROJECT_NAME=$1
+    ;;
+  -h|--help)
+      usage
+      ;;
+  --)
+  ;;
+    esac
+    shift
+done
+LOCAL_GIT_DIR=$(git rev-parse --show-toplevel)
+
+if [ -z "$PROJECT_NAME" ]; then
+  cd $LOCAL_GIT_DIR
+  find ./.git-tx -type d | sed -e 's/\.\/\.git-tx\///;/\/\.git-tx/d' | xargs -I{} $0 --name {}
+  exit 0
+fi
+
+echo "---------- tx list project: $PROJECT_NAME -----------"
+ 
+. $(dirname $0)/git-tx-setup 
+setOtherPath
+
+echo "Local directory: $LOCAL_PREFIX"
+echo "Transplant of directory: $OTHER_PATH"
+echo "Other git URL: $OTHER_GIT_URL" 
+echo "Local pull branch: $TX_BRANCH"
+SED_SCR="s/tx-$PROJECT_NAME//"
+OTHER_FEATURE_BRANCHES="$( cd $OTHER_PATH && git branch | grep tx-$PROJECT_NAME )"
+
+listBranches() {
+  if [ "$#" -eq 0 ]; then
+    echo "No push branches"
+    exit 0
+  fi
+
+  while [ "$#" -ne 0 ]; do
+    BRANCH=$1
+    shift
+    echo "Push branch $BRANCH last commit: $( cd $OTHER_PATH && git log -1 --oneline ) "
+  done
+
+}
+listBranches $OTHER_FEATURE_BRANCHES
+
+echo "Other $OTHER_FEATURE_BRANCHES"
+echo ""
