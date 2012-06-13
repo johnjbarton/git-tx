@@ -3,7 +3,6 @@
 # Copyright (c) 2010 Google Inc johnjbarton@google.com
 # Google BSD license http://code.google.com/google_bsd_license.html
 
-set -e 
 
 OPTIONS_SPEC="\
 git tx-push  <projectName>
@@ -80,11 +79,11 @@ if [ "$VERBOSE_ONLY" = yes ]; then
   exit 0
 fi
 
-if [ -z "$( git branch --contains $OTHER_COMMIT | grep $TX_BRANCH)" ]; then
+if [ -z "$( git branch --contains $LOCAL_COMMIT | grep $TX_BRANCH)" ]; then
   echo "The current branch does not contain the transplant commit"
   exit 32
 fi
-
+set -x -v
 # ----------------- Other ------------------
 # verify that the other tree is clean and we are up to date
 #

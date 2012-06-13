@@ -92,6 +92,23 @@ if [ "$VERBOSE_ONLY" = yes ]; then
   exit 0
 fi
 
+DESTINATION="$LOCAL_GIT_DIR"/"$LOCAL_PREFIX"
+
+if [ -z "$DESTINATION" ]; then
+  echo "git-tx-fetch No destination"
+  exit 38
+fi
+
+if [ ! -w "$DESTINATION" ]; then
+  echo "git-tx-fetch Destination is not writable: $DESTINATION"
+  exit 38
+fi
+
+CURRENT_LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
+require_tx_commit "$LOCAL_COMMIT" "$LOCAL_BRANCH"
+
+git checkout "$LOCAL_BRANCH"
+set -x -v
 # ------------------ OTHER -----------------
 # verify that the other tree is clean and we are up to date
 #
@@ -107,66 +124,40 @@ cd "$OTHER_GIT_DIR"
 
 # verify that the other tree has our commit
 #
-DEBUG echo "require tx branch in other tree $( pwd )"
-require_tx_branch "$OTHER_COMMIT"
+DEBUG echo "require tx commit in other tree $( pwd )"
+require_tx_commit "$OTHER_COMMIT" "$OTHER_BRANCH"
 
-git checkout $TX_BRANCH
-git rebase $OTHER_BRANCH
+git checkout "$OTHER_BRANCH"
 
-# diff within the transplant
+# create a marker 
 #
-CHANGED_TAR=/tmp/git-tx-$$.tar
-git diff --name-only --no-prefix "$OTHER_COMMIT".."$OTHER_BRANCH" "--" "$OTHER_PREFIX" | xargs tar -cf "$CHANGED_TAR"
+git checkout -b $TX_BRANCH
 
-DEBUG echo "fetch file list from $( git log -1 --oneline $OTHER_COMMIT ):"
+tar -c -C  "$OTHER_PREFIX" . | ( cd "$LOCAL_GIT_DIR" && mkdir -p "$DESTINATION" && cd "$DESTINATION" && rm -r -f * && tar xfp -)
 
 git checkout -q "$CURRENT_OTHER_BRANCH"
-
-if [ ! -r "$CHANGED_TAR" ]; then
-  echo "Nothing to fetch, diff is empty"
-  cd "$OTHER_GIT_DIR"
-  advance_tx_branch "$OTHER_COMMIT"
-  cd "$LOCAL_GIT_DIR"
-  exit 0
-fi
-
-DEBUG tar -tvf "$CHANGED_TAR" 
 
 # -------------------- LOCAL ---------------
 cd "$LOCAL_GIT_DIR"
 cd "$LOCAL_PREFIX"
 
-CURRENT_LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
-
-DEBUG echo "require tx branch in $( pwd ) at $( git log --no-pager -1 --oneline $LOCAL_COMMIT )"
-require_tx_branch "$LOCAL_COMMIT"
-
-git checkout "$TX_BRANCH" 
-
-# patch this tree with changes from the other one, while at the prefix depth
-#
-
-DEBUG echo "Copying changed files to $( pwd )"
-mkdir -p /tmp/$$
-tar -C /tmp/$$ -xvf "$CHANGED_TAR"
-mv /tmp/$$/"$OTHER_PREFIX"* .
-
 DEBUG git status
 DEBUG echo "fetch applying patch at $( git log -1 --oneline HEAD )"
+
+if [ -z "$( git status --porcelain )" ]; then
+  # Already up-to date
+  exit 0
+fi
 
 # commit the changes
 git add -A
 git commit -m "tx-pull from $OTHER_GIT_URL $OTHER_PREFIX at $OTHER_COMMIT"
 
-DEBUG echo "fetch applied patch from $CHANGED_TAR in $( pwd ), status:"
 DEBUG git status
 DEBUG git log --no-pager -1 --oneline HEAD
 
 git checkout -q "$CURRENT_LOCAL_BRANCH"
 
-# ------------------ OTHER -----------------
-cd "$OTHER_GIT_DIR"
-advance_tx_branch "$OTHER_COMMIT"
 # ------------------ LOCAL -----------------
 cd "$LOCAL_GIT_DIR"
 

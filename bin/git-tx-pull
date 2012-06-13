@@ -92,10 +92,10 @@ fi
 if [ "$VERBOSE_ONLY" = yes ]; then
   exit 0
 fi
-# Create a commit on branch $TX_BRANCH from the change on the other tree 
+# Create a commit on branch $LOCAL_BRANCH from the change on the other tree 
 #
-require_tx_branch "$OTHER_COMMIT"
 PREFETCH_HEAD=$( git rev-parse "$TX_BRANCH" )
+
 $(dirname $0)/git-tx-fetch "$PROJECT_NAME" 
 
 if [ "$PREFETCH_HEAD" == "$( git rev-parse $TX_BRANCH )" ]; then
@@ -106,24 +106,23 @@ fi
 DEBUG echo "Merge $TX_BRANCH in to $( pwd ) with status:"
 DEBUG git status
 
-# bring that commit over
-#
-git merge $TX_BRANCH
-MERGE_RC=$?
-
-DEBUG echo "after merge our head is $( git log -1 --oneline HEAD )"
-
-if [ "$MERGE_RC" -eq 0 ]; then 
-  # advance our marker and save it
-  cd "$OTHER_PATH"
-  OTHER_COMMIT=$( git rev-parse HEAD )
-  DEBUG echo "setting other_commit to $( git log -1 --oneline $OTHER_COMMIT )"
-  cd "$LOCAL_GIT_DIR"
-  DEBUG echo "setting local_commit to $( git log -1 --oneline $LOCAL_COMMIT )"
+# advance our markers and save them
+cd "$OTHER_PATH"
+OTHER_COMMIT=$( git rev-parse HEAD )
+DEBUG echo "setting other_commit to $( git log -1 --oneline $OTHER_COMMIT )"
+cd "$LOCAL_GIT_DIR"
+DEBUG echo "setting local_commit to $( git log -1 --oneline $LOCAL_COMMIT )"
 . $(dirname $0)/git-tx-setdown "tx-pull $PROJECT_NAME"
- exit 0
-else
-  echo "Complete the merge with branch $TX_BRANCH manually"
-  exit 1
-fi
+
+mergeFeatureBranches() {
+  while [ "$#" -ne 0 ]; do
+    git checkout $1
+    git merge "$TX_BRANCH"
+    shift
+  done
+}
+
+FEATURE_BRANCHES=$( echo "$OTHER_FEATURE_BRANCHES" | sed -e 's/tx-$PROJECT_NAME//' )
+mergeFeatureBranches $FEATURE_BRANCHES
+
 exit 0

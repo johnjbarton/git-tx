@@ -32,6 +32,8 @@ if [ -z "$OTHER_GIT_URL" ]; then
 	OTHER_GIT_URL=$( cat "$META_TX_DIR"/other_git_url )
 fi
 
+export OTHER_FEATURE_BRANCHES="$( cd $OTHER_PATH && git branch | grep tx-$PROJECT_NAME )"
+
 checkOtherPath() {
     if [ ! -d "$OTHER_PATH" ]; then 
       echo "No directory at stored value of other path: $OTHER_PATH"
@@ -67,8 +69,11 @@ setOtherPath() {
 
 }
 
-require_tx_branch() {
+
+require_tx_commit() {
   TX_COMMIT=$1
+  TX_BRANCH=$2
+
   if [ -z "$TX_COMMIT" ]; then
     echo "usage require_tx_branch <commit-sha>"
     exit 27
@@ -80,7 +85,17 @@ require_tx_branch() {
     echo "The git repo at $( pwd ) does not contain the git-tx commit $TX_COMMIT"
     exit 28
   fi
+
+  if [ -z  "git branch --contains $TX_COMMIT | grep $TX_BRANCH" ]; then
+    echo "The git branch $TX_BRANCH of repo at $( pwd ) does not contain the git-tx commit $TX_COMMIT"
+    exit 39
+  fi
+}
+
+require_tx_branch() {
+  TX_COMMIT=$1
   TX_BRANCH=tx-pull-"$PROJECT_NAME"
+  require_tx_commit "$TX_COMMIT" "$TX_BRANCH"
   TX_BRANCH_COMMIT=$( git rev-parse -q --verify "$TX_BRANCH" )
   if [ $? -ne 0 ]; then  # the branch does not exist
     echo "The $TX_BRANCH branch does not exist"
