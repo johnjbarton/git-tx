@@ -16,9 +16,9 @@ mustFail() {
 mustPass() {
   RC=$?
   if [ $RC -eq 0 ]; then
-    echo "PASS"
+    echo "test --------------------------------------------------> PASS"
   else
-    echo ">> FAIL: $RC <<"
+    echo "test -------------------------------------------------->> FAIL: $RC <<"
     exit $RC
   fi
 }
@@ -90,6 +90,7 @@ if [ -z "$( cat /tmp/git-tx-left/.git-tx/git-tx/local_prefix)" ]; then
   exit 19
 fi
 
+rm -r -f /tmp/git-tx-save
 mv /tmp/git-tx-right /tmp/git-tx-save
 rm -r -f /tmp/git-tx-other
 cd /tmp

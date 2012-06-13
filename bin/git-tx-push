@@ -7,7 +7,7 @@
 OPTIONS_SPEC="\
 git tx-push  <projectName>
 
-Squashes all changes on the local transplant subdirectory into a commit on the original other repo
+Copy the local transplant subdirectory onto the original other repo. 
 --
 o,other=             set <path> as source of transplant 
 v,verbose            echo information
@@ -79,11 +79,13 @@ if [ "$VERBOSE_ONLY" = yes ]; then
   exit 0
 fi
 
-if [ -z "$( git branch --contains $LOCAL_COMMIT | grep $TX_BRANCH)" ]; then
-  echo "The current branch does not contain the transplant commit"
+LOCAL_FEATURE_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
+
+if [ -z "$( git branch --contains $LOCAL_COMMIT | grep $LOCAL_FEATURE_BRANCH)" ]; then
+  echo "The branch $LOCAL_FEATURE_BRANCH does not contain the transplant commit"
   exit 32
 fi
-set -x -v
+
 # ----------------- Other ------------------
 # verify that the other tree is clean and we are up to date
 #
@@ -91,62 +93,40 @@ CWD=$( pwd )
 cd $OTHER_PATH
 require_clean_work_tree "tx-push"
 
-require_tx_branch "$OTHER_COMMIT"
+require_commit "$OTHER_COMMIT" "$OTHER_BRANCH"
 
-OTHER_DIFF=$( git log --oneline "$OTHER_COMMIT".."$TX_BRANCH" )
+OTHER_DIFF=$( git log --oneline "$OTHER_COMMIT".."$OTHER_BRANCH" )
 if [ "$OTHER_DIFF" ]; then
   echo "$OTHER_DIFF"
   echo "Repo at $OTHER_PATH has ^these^ commits ahead of this transplant, git tx pull first"
   exit 14
 fi
 
-# as a result of the above checks, we know that branch tx-pull points to head
-
 OTHER_GIT_DIR=$(git rev-parse --show-toplevel)
+git checkout "$OTHER_BRANCH"
 
 #------------------ Local -------------------
 cd "$LOCAL_GIT_DIR"
-LOCAL_FEATURE_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 
-# create patch from this tree
-#
-CHANGED_TAR=/tmp/git-tx-$$.tar
-git diff --no-prefix --name-only "$LOCAL_COMMIT".."$LOCAL_FEATURE_BRANCH" "--" "$LOCAL_PREFIX" | xargs tar -cf "$CHANGED_TAR"
+tar -c -C  "$LOCAL_PREFIX" . | ( cd "$OTHER_GIT_DIR" && cd "$OTHER_PREFIX" && rm -r -f * && tar xfp -)
 
-if [ -z "$(cat $CHANGED_TAR)" ]; then
-  echo "No changes in $LOCAL_PREFIX"
+# ------------------ Other ------------------
+cd "$OTHER_PATH"
+
+if [ -z "$( git status --porcelain )" ]; then
+  echo "Already up-to date"
   exit 0
 fi
 
-# move the marker up now that we have the diff
-#
-LOCAL_COMMIT=$(git rev-parse HEAD)
-LOCAL_URL=$(git config --get remote.origin.url)
+if [ -z "$OTHER_FEATURE_BRANCH" ]; then
+  git status
+  exit 0
+fi
 
-# ------------------ Other ------------------
-# patch the other tree, 
-#
-cd "$OTHER_PATH"
-git checkout "$TX_BRANCH"
-FEATURE_BRANCH="tx-$PROJECT_NAME-$LOCAL_FEATURE_BRANCH"
-git checkout -f -b "$FEATURE_BRANCH"
+# Create a feature branch and commit to it
 
-# patch while setting at the other path depth and using no prefix
- 
-DEBUG echo "Copying changed files to $( pwd )"
-mkdir -p /tmp/$$
-tar -C /tmp/$$ -xvf "$CHANGED_TAR"
-mv /tmp/$$/"$LOCAL_PREFIX/"* .
-
-
-# commit the changes
+git checkout -f -b "$OTHER_FEATURE_BRANCH"
 git add -A
-git commit --no-verify -q -m "Patch from $LOCAL_URL $LOCAL_PREFIX at $LOCAL_COMMIT"
+git commit --no-verify -q -m "git-tx-push from $LOCAL_URL $LOCAL_PREFIX at $LOCAL_COMMIT"
 
-# ------------------- Local -----------------
-cd "$LOCAL_GIT_DIR"
-# TODO don't source this, pass args
-. $(dirname $0)/git-tx-setdown "tx-push $PROJECT_NAME"
-
-echo "Patch applied on branch $FEATURE_BRANCH in $( pwd )"  
 exit 0

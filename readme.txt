@@ -14,21 +14,33 @@ Unlike git submodules or 'fake' git submodules:
 
 On the other hand, unlike git submodules or 'fake' git submodules, 
   transplants sync by patches across trees rather than commits on full trees.
-  push/pull works from a local reference copy outside the tree
+  push/pull works operates on a local reference copy outside the tree
 
 git-tx works with two local repositories. 
   1) "Other", or "graft-source" repository,
-  2) "Destination" or "transplant" repository.
-In the destination repository, you issue 'git-tx clone' to copy a 
-subdirectory from the other repository.  As a side effect, git-tx stores 
-information in the destination repo. The information includes the HEAD 
-commit in both repositories and the paths to the subdirectories. This 
+  2) "Local", "Destination" or "transplant" repository.
+In the local or destination repository, you issue 'git-tx clone' to copy a 
+subdirectory from the 'other' repository.  
+
+As a side effect, git-tx stores information in the destination repo. The 
+information includes both branches used (local and other) during the copy,
+the HEAD commit in both repositories and the paths to the subdirectories. This 
 information is stored in a '.git-tx' director in the destination 
 tree and is committed along with the transplant. 
 
 Later, when either repository has changed, you can use git-tx-pull 
 or git-tx-push to resynchronize the directories and the info in the .git-tx
 directory will be consulted.
+
+To bring updates from 'other' into 'local', use git-tx-pull. This will switch
+both trees to the branches used git-tx-clone, then copy the files in the
+other tree under the specific subdirectory onto the local tree. The changes
+are committed to the local tree then merged in to the current branch.
+
+To update the other tree with changes from the local one, use git-tx-push. 
+The other tree is switched to the git-tx-clone branch and the files under the
+local subdirectory are copied to the other tree. Use this with a local feature
+branch to create a patch on the other tree. 
 
 Examples:
 

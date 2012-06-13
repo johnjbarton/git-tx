@@ -108,7 +108,7 @@ CURRENT_LOCAL_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 require_tx_commit "$LOCAL_COMMIT" "$LOCAL_BRANCH"
 
 git checkout "$LOCAL_BRANCH"
-set -x -v
+
 # ------------------ OTHER -----------------
 # verify that the other tree is clean and we are up to date
 #
@@ -128,10 +128,6 @@ DEBUG echo "require tx commit in other tree $( pwd )"
 require_tx_commit "$OTHER_COMMIT" "$OTHER_BRANCH"
 
 git checkout "$OTHER_BRANCH"
-
-# create a marker 
-#
-git checkout -b $TX_BRANCH
 
 tar -c -C  "$OTHER_PREFIX" . | ( cd "$LOCAL_GIT_DIR" && mkdir -p "$DESTINATION" && cd "$DESTINATION" && rm -r -f * && tar xfp -)
 

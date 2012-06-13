@@ -92,18 +92,19 @@ fi
 if [ "$VERBOSE_ONLY" = yes ]; then
   exit 0
 fi
+
 # Create a commit on branch $LOCAL_BRANCH from the change on the other tree 
 #
-PREFETCH_HEAD=$( git rev-parse "$TX_BRANCH" )
+PREFETCH_HEAD=$( git rev-parse "$LOCAL_BRANCH" )
 
 $(dirname $0)/git-tx-fetch "$PROJECT_NAME" 
 
-if [ "$PREFETCH_HEAD" == "$( git rev-parse $TX_BRANCH )" ]; then
+if [ "$PREFETCH_HEAD" = "$( git rev-parse $LOCAL_BRANCH )" ]; then
   echo "$PROJECT_NAME Already up to date"
   exit $?
 fi
 
-DEBUG echo "Merge $TX_BRANCH in to $( pwd ) with status:"
+DEBUG echo "Merge $LOCAL_BRANCH in to $( pwd ) with status:"
 DEBUG git status
 
 # advance our markers and save them
@@ -117,7 +118,7 @@ DEBUG echo "setting local_commit to $( git log -1 --oneline $LOCAL_COMMIT )"
 mergeFeatureBranches() {
   while [ "$#" -ne 0 ]; do
     git checkout $1
-    git merge "$TX_BRANCH"
+    git merge "$LOCAL_BRANCH"
     shift
   done
 }

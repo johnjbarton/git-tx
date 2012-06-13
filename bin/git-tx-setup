@@ -8,8 +8,6 @@
 LOCAL_GIT_DIR=$(git rev-parse --show-toplevel)
 META_TX_DIR="$LOCAL_GIT_DIR"/.git-tx/"$PROJECT_NAME"
 
-export TX_BRANCH="tx-pull-$PROJECT_NAME"
-
 if [ -z "$LOCAL_COMMIT" ]; then
 	LOCAL_COMMIT=$( cat "$META_TX_DIR"/local_commit )
 fi
@@ -32,7 +30,9 @@ if [ -z "$OTHER_GIT_URL" ]; then
 	OTHER_GIT_URL=$( cat "$META_TX_DIR"/other_git_url )
 fi
 
-export OTHER_FEATURE_BRANCHES="$( cd $OTHER_PATH && git branch | grep tx-$PROJECT_NAME )"
+if [ $( git rev-parse ) ]; then
+  export OTHER_FEATURE_BRANCHES="$( cd $OTHER_PATH && git branch | grep tx-$PROJECT_NAME )"
+fi
 
 checkOtherPath() {
     if [ ! -d "$OTHER_PATH" ]; then 
@@ -75,7 +75,7 @@ require_tx_commit() {
   TX_BRANCH=$2
 
   if [ -z "$TX_COMMIT" ]; then
-    echo "usage require_tx_branch <commit-sha>"
+    echo "usage require_tx_commit <commit-sha> <branch>"
     exit 27
   fi
   
@@ -92,41 +92,9 @@ require_tx_commit() {
   fi
 }
 
-require_tx_branch() {
-  TX_COMMIT=$1
-  TX_BRANCH=tx-pull-"$PROJECT_NAME"
-  require_tx_commit "$TX_COMMIT" "$TX_BRANCH"
-  TX_BRANCH_COMMIT=$( git rev-parse -q --verify "$TX_BRANCH" )
-  if [ $? -ne 0 ]; then  # the branch does not exist
-    echo "The $TX_BRANCH branch does not exist"
-    git rev-parse --verify -q "$TX_COMMIT"
-    if [ $? -ne 0 ]; then 
-      echo "The tree at $( pwd ) is not consistent with git-tx: is it up to date?"
-      exit 36
-    fi
-    git branch "$TX_BRANCH" "$TX_COMMIT"
-  else
-    if [ ! $( echo "$TX_BRANCH_COMMIT"  | grep "$TX_COMMIT") ]; then
-      # the branch is misplaced
-      DEBUG echo "The $TX_BRANCH branch was misplaced, branch commit:"
-      DEBUG git log --oneline -1 "$TX_BRANCH_COMMIT"
-      DEBUG echo "forcing to tx commit:"
-      DEBUG git log --oneline -1 "$TX_COMMIT"
-     
-      git branch --force "$TX_BRANCH" "$TX_COMMIT"
-    fi
-  fi
-}
-
-advance_tx_branch() {
-  PREVIOUS_TX=$1
-  DEBUG echo "advance tx branch to HEAD from $PREVIOUS_TX in $(pwd)"
-  git update-ref refs/heads/"$TX_BRANCH" $( git rev-parse HEAD ) 
-}
-
-function DEBUG() {
-#  if [ "$_DEBUG" == "on" ]; then
+DEBUG() {
+  if [ "$_DEBUG" = "on" ]; then
     $@
-#  fi
+  fi
 }
 

@@ -63,7 +63,7 @@ setOtherPath
 echo "Local directory: $LOCAL_PREFIX"
 echo "Transplant of directory: $OTHER_PATH"
 echo "Other git URL: $OTHER_GIT_URL" 
-echo "Local pull branch: $TX_BRANCH"
+echo "Local pull branch: $LOCAL_BRANCH"
 SED_SCR="s/tx-$PROJECT_NAME//"
 OTHER_FEATURE_BRANCHES="$( cd $OTHER_PATH && git branch | grep tx-$PROJECT_NAME )"
 

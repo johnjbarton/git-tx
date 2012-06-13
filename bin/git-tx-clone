@@ -108,8 +108,9 @@ if [ $(git rev-parse --show-toplevel) = "$LOCAL_GIT_DIR" ]; then
 fi
 
 # default to other current branch
+ORIG_OTHER_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
 if [ -z "$OTHER_BRANCH" ]; then
-  OTHER_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
+  OTHER_BRANCH="$ORIG_OTHER_BRANCH"
 fi
 OTHER_PREFIX=$( git rev-parse --show-prefix )
 OTHER_CDUP=$( git rev-parse --show-cdup )
@@ -135,27 +136,22 @@ if [ -e "$DESTINATION" ]; then
   die "Destination \"$DESTINATION\" already exists"
 fi
 
-TX_BRANCH="tx-pull-$PROJECT_NAME"
-
 if [ "$EXPLAIN" =  yes ]; then
-  echo "git transplant branch named $TX_BRANCH"
   echo "git transplant from branch $OTHER_BRANCH"
   echo "git transplant from directory $OTHER_PATH"
-  echo "git transplant to   directory $DESTINATION"
-  echo "git transplant current local branch $LOCAL_BRANCH"
+  echo "git transplant to branch $LOCAL_BRANCH"
+  echo "git transplant to directory $DESTINATION"
   exit 0
 fi
 
 # copy the other subtree into our local tree
 #
-ORIG_OTHER_BRANCH=`git symbolic-ref HEAD | sed -e 's/^.*\///'`
-git checkout "$OTHER_BRANCH"
+git checkout -q "$OTHER_BRANCH"
 tar -c -C  "$OTHER_PREFIX" . | ( cd "$LOCAL_GIT_DIR" && mkdir -p "$DESTINATION" && cd "$DESTINATION" && tar xfp -)
 
 OTHER_COMMIT="$( git rev-parse $OTHER_BRANCH )"
-git branch --no-track  "$TX_BRANCH"
 
-git checkout "$ORIG_OTHER_BRANCH"
+git checkout -q "$ORIG_OTHER_BRANCH"
 
 cd "$DESTINATION"
 
@@ -166,7 +162,6 @@ git add -A
 git commit -a -m "Transplant $OTHER_PREFIX from $OTHER_GIT_URL @ $OTHER_BRANCH to $LOCAL_PREFIX"
 
 LOCAL_COMMIT=$( git rev-parse HEAD )
-git branch --no-track "$TX_BRANCH"
 
 . $(dirname $0)/git-tx-setdown " for tx-clone $OTHER_PREFIX in $OTHER_GIT_URL "
  
