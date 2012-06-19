@@ -93,7 +93,7 @@ CWD=$( pwd )
 cd $OTHER_PATH
 require_clean_work_tree "tx-push"
 
-require_commit "$OTHER_COMMIT" "$OTHER_BRANCH"
+require_tx_commit "$OTHER_COMMIT" "$OTHER_BRANCH"
 
 OTHER_DIFF=$( git log --oneline "$OTHER_COMMIT".."$OTHER_BRANCH" )
 if [ "$OTHER_DIFF" ]; then
