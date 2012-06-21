@@ -58,12 +58,22 @@ fi
 echo "---------- tx list project: $PROJECT_NAME -----------"
  
 . $(dirname $0)/git-tx-setup 
-setOtherPath
+setOtherPath 2
+if [ $? -eq 2 ]; then
+  echo "Other path not set, use --other on tx-pull"
+  exit 0;
+fi
 
+echo "Local pull branch: $LOCAL_BRANCH"
 echo "Local directory: $LOCAL_PREFIX"
+echo "Local (push) commit: $( git log -1 --oneline $LOCAL_COMMIT )"
+echo "Other pull branch: $OTHER_BRANCH"
+echo "Other subdirectory: $OTHER_PREFIX"
+echo "Other (pull) commit: $( cd $OTHER_PATH && git log -1 --oneline $OTHER_COMMIT )"
 echo "Transplant of directory: $OTHER_PATH"
 echo "Other git URL: $OTHER_GIT_URL" 
-echo "Local pull branch: $LOCAL_BRANCH"
+
+
 SED_SCR="s/tx-$PROJECT_NAME//"
 OTHER_FEATURE_BRANCHES="$( cd $OTHER_PATH && git branch | grep tx-$PROJECT_NAME )"
 
