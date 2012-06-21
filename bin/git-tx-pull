@@ -40,7 +40,7 @@ get_repo_base() {
 	) 2>/dev/null
 }
 
-PROJECT_NAME=
+
 . $(dirname $0)/git-tx-setclear
 
 while [ "$#" -ne 0 ]; do
@@ -78,7 +78,6 @@ fi
 . $(dirname $0)/git-tx-setup 
 setOtherPath
 
-DEBUG="on"
 
 if [ "$VERBOSE" =  yes ]; then
   echo "git tx pull to local directory $LOCAL_PREFIX"
@@ -97,7 +96,11 @@ fi
 #
 PREFETCH_HEAD=$( git rev-parse "$LOCAL_BRANCH" )
 
-$(dirname $0)/git-tx-fetch "$PROJECT_NAME" 
+$(dirname $0)/git-tx-fetch "$PROJECT_NAME"
+
+if [ $? -ne 0 ]; then
+  exit $?
+fi 
 
 if [ "$PREFETCH_HEAD" = "$( git rev-parse $LOCAL_BRANCH )" ]; then
   echo "$PROJECT_NAME Already up to date"
